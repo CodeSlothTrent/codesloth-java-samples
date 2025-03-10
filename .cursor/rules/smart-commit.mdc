@@ -5,7 +5,7 @@ description: Prompts for commit with auto-generated message when "accept all" is
 
 # Smart Commit
 
-This rule prompts you to commit changes when you click "accept all" or submit the command "commit" with no other text. It generates a suggested commit message based on file changes and asks you to confirm the message or provide your own.
+This rule prompts you to commit changes when you click "accept all" or submit the command "commit" with no other text. It generates a suggested commit message based on file changes and asks you to confirm the message or provide your own. After committing, it will also prompt to push changes.
 
 ## When accepting all changes or using commit command
 
@@ -32,11 +32,25 @@ do:
   - if user_input equals "yes" (case insensitive)
     - run command "git commit -m '{commit_message}'"
     - inform user "Changes committed successfully!"
+    - ask user "Would you like to push these changes? Type 'yes' to push, 'no' to skip pushing."
+    - wait for user response as push_response
+    - if push_response equals "yes" (case insensitive)
+      - run command "git push"
+      - inform user "Changes pushed successfully!"
+    - else
+      - inform user "Push skipped."
   - else if user_input equals "no" (case insensitive)
     - inform user "Commit cancelled."
   - else
     - run command "git commit -m '{user_input}'"
     - inform user "Changes committed with your message!"
+    - ask user "Would you like to push these changes? Type 'yes' to push, 'no' to skip pushing."
+    - wait for user response as push_response
+    - if push_response equals "yes" (case insensitive)
+      - run command "git push"
+      - inform user "Changes pushed successfully!"
+    - else
+      - inform user "Push skipped."
 ```
 
 ## Example
@@ -47,5 +61,8 @@ When you click "accept all" or type "commit", the system will:
 3. Generate a commit message like "Add user authentication to login service" or "Update README with installation instructions"
 4. Ask for your confirmation
 5. Commit the changes with the suggested message or your own message
+6. Ask if you want to push the changes
+7. Push the changes if confirmed
 
-If you type "no", the commit process will be cancelled.
+If you type "no" during the commit confirmation, the commit process will be cancelled.
+If you type "no" during the push confirmation, the changes will be committed but not pushed.

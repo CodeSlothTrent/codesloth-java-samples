@@ -1,6 +1,7 @@
 package com.example.api.model;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 public class Task {
@@ -74,5 +75,34 @@ public class Task {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    @Override
+    public String toString() {
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        String createdAtStr = createdAt != null ? "\"" + formatter.format(createdAt) + "\"" : "null";
+        String updatedAtStr = updatedAt != null ? "\"" + formatter.format(updatedAt) + "\"" : "null";
+        
+        return "{"
+            + "\"id\":\"" + id + "\","
+            + "\"title\":\"" + (title != null ? escapeJson(title) : "") + "\","
+            + "\"description\":\"" + (description != null ? escapeJson(description) : "") + "\","
+            + "\"completed\":" + completed + ","
+            + "\"createdAt\":" + createdAtStr + ","
+            + "\"updatedAt\":" + updatedAtStr
+            + "}";
+    }
+    
+    private String escapeJson(String input) {
+        if (input == null) {
+            return "";
+        }
+        return input.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\b", "\\b")
+                   .replace("\f", "\\f")
+                   .replace("\n", "\\n")
+                   .replace("\r", "\\r")
+                   .replace("\t", "\\t");
     }
 } 

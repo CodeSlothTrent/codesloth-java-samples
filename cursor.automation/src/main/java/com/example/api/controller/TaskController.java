@@ -1,6 +1,7 @@
 package com.example.api.controller;
 
 import com.example.api.model.Task;
+import com.example.api.model.TaskSearchParams;
 import com.example.api.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -58,5 +59,11 @@ public class TaskController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+    
+    @PostMapping("/search")
+    public ResponseEntity<List<Task>> searchTasks(@RequestBody TaskSearchParams searchParams) {
+        List<Task> matchingTasks = taskService.searchTasks(searchParams);
+        return ResponseEntity.ok(matchingTasks);
     }
 } 

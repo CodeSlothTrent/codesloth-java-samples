@@ -1,16 +1,17 @@
 ---
-name: Smart Commit
-description: Prompts for commit with auto-generated message when "accept all" is clicked or "commit" command is used
+description: Prompts for commit with auto-generated message when "commit" command is used
+globs: 
+alwaysApply: false
 ---
 
 # Smart Commit
 
-This rule prompts you to commit changes when you click "accept all" or submit the command "commit" with no other text. It generates a suggested commit message based on file changes and asks you to confirm the message or provide your own. After committing, it will also prompt to push changes.
+This rule prompts you to commit changes when you submit the command "commit" with no other text. It generates a suggested commit message based on file changes and asks you to confirm the message or provide your own. After committing, it will also prompt to push changes.
 
-## When accepting all changes or using commit command
+## When using commit command
 
 ```cursor
-when: user clicks "accept all" or user says exactly "commit"
+when: user says exactly "commit"
 do:
   - run command "git status --porcelain" and store result as staged_files
   - if staged_files is empty
@@ -55,7 +56,7 @@ do:
 
 ## Example
 
-When you click "accept all" or type "commit", the system will:
+When you type "commit", the system will:
 1. Check for staged changes and stage all changes if none are found
 2. Analyze your changes (e.g., "2 files modified in auth module, 1 file added in utils")
 3. Generate a commit message like "Add user authentication to login service" or "Update README with installation instructions"

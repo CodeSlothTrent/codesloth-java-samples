@@ -1,0 +1,49 @@
+# Git Cat Rule
+
+## Description
+This rule automatically appends "| cat" to any git commands to prevent paging issues in the terminal.
+
+## Metadata
+```yaml
+name: git-cat
+description: Automatically appends "| cat" to git commands to prevent paging issues
+version: 1.0.0
+author: AI Assistant
+tags:
+  - git
+  - terminal
+  - utility
+glob: "**/*.{js,java,py,ts,tsx,jsx,html,css,md,json,yaml,yml}"
+```
+
+## Rule
+When executing git commands in the terminal, append "| cat" to prevent paging issues that can cause the terminal to hang or display content improperly.
+
+## Examples
+- Original: `git log`
+- Modified: `git log | cat`
+- Original: `git diff`
+- Modified: `git diff | cat`
+- Original: `git show`
+- Modified: `git show | cat`
+
+## Implementation
+When using the `run_terminal_cmd` tool with git commands, automatically append "| cat" to the command if it's a git command that might produce paginated output.
+
+```typescript
+// Check if the command is a git command that might produce paginated output
+if (command.startsWith('git ') && 
+    (command.includes('log') || 
+     command.includes('diff') || 
+     command.includes('show') || 
+     command.includes('blame'))) {
+  
+  // Only append "| cat" if it's not already there
+  if (!command.includes('| cat')) {
+    command = command + ' | cat';
+  }
+}
+```
+
+## Notes
+This rule helps prevent issues with terminal commands that use pagers like `less` which can cause problems in automated environments or when using AI assistants.

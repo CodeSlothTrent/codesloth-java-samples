@@ -7,10 +7,13 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="cursor-automation-api" />
+        <module name="workflow-automation" />
         <module name="codesloth-java-samples" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="cursor-automation-api" target="17" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

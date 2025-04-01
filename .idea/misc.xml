@@ -6,6 +6,7 @@
       <list>
         <option value="$PROJECT_DIR$/pom.xml" />
         <option value="$PROJECT_DIR$/cursor.automation/pom.xml" />
+        <option value="$PROJECT_DIR$/cursor-workflow-automation/pom.xml" />
       </list>
     </option>
   </component>

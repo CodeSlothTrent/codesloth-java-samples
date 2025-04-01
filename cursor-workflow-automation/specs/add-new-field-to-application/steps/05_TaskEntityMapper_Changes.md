@@ -4,12 +4,12 @@
 
 ## Changes Required
 
-Update the TaskEntityMapper to handle the new `dueDate` field when mapping between TaskServiceModel and TaskEntity.
+Update the TaskEntityMapper to handle the new field when mapping between TaskServiceModel and TaskEntity.
 
 ### Implementation Details
 
-1. Modify the `toEntity` method to include mapping of the dueDate field from ServiceModel to Entity
-2. Modify the `toServiceModel` method to include mapping of the dueDate field from Entity to ServiceModel
+1. Modify the `toEntity` method to include mapping of the new field from ServiceModel to Entity
+2. Modify the `toServiceModel` method to include mapping of the new field from Entity to ServiceModel
 3. Update any batch mapping methods if present
 
 ### Code Example
@@ -23,11 +23,11 @@ public class TaskEntityMapper {
             return null;
         }
         
-        // Updated to include dueDate field
+        // Updated to include new field
         TaskEntity entity = new TaskEntity(
             serviceModel.getId(), 
             serviceModel.getTitle(),
-            serviceModel.getDueDate()  // Add the new field
+            serviceModel.getNewField()  // Add the new field
         );
         
         return entity;
@@ -39,11 +39,11 @@ public class TaskEntityMapper {
             return null;
         }
         
-        // Updated to include dueDate field
+        // Updated to include new field
         TaskServiceModel serviceModel = new TaskServiceModel(
             entity.getId(), 
             entity.getTitle(),
-            entity.getDueDate()  // Add the new field
+            entity.getNewField()  // Add the new field
         );
         
         return serviceModel;
@@ -74,7 +74,8 @@ public class TaskEntityMapper {
 
 ### Testing Considerations
 
-1. Test that the dueDate field is properly mapped in both directions
-2. Verify null handling for the dueDate field
-3. Test batch mapping operations with mixed datasets (some with dueDate, some without)
-4. Ensure that existing tests for the mapper still pass 
+1. Test that the new field is properly mapped in both directions
+2. Verify null handling for the new field
+3. Test batch mapping operations with mixed datasets (some with new field, some without)
+4. Ensure that existing tests for the mapper still pass
+5. For primitive types, verify default value handling 

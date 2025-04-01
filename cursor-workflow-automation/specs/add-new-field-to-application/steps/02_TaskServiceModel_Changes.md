@@ -4,11 +4,11 @@
 
 ## Changes Required
 
-Add a `dueDate` field to the TaskServiceModel class to represent the date by which the task should be completed.
+Add a new field to the TaskServiceModel class to represent additional task information.
 
 ### Implementation Details
 
-1. Add a new field of type `LocalDate` called `dueDate`
+1. Add a new field of the appropriate type called `newField`
 2. Update the constructors to include the new field (with overloads for backward compatibility)
 3. Add getter and setter methods for the new field
 4. Update the `toString()` method to include the new field
@@ -16,13 +16,14 @@ Add a `dueDate` field to the TaskServiceModel class to represent the date by whi
 ### Code Example
 
 ```java
-// Add import
-import java.time.LocalDate;
+// Add any necessary imports for the field type
+// import java.time.LocalDate; // Example import for date type
+// import java.math.BigDecimal; // Example import for decimal type
 
 public class TaskServiceModel {
     private String id;
     private String title;
-    private LocalDate dueDate; // New field
+    private [FieldType] newField; // New field with appropriate type
     
     // Default constructor
     public TaskServiceModel() {
@@ -40,22 +41,22 @@ public class TaskServiceModel {
     }
     
     // New constructor with all fields
-    public TaskServiceModel(String id, String title, LocalDate dueDate) {
+    public TaskServiceModel(String id, String title, [FieldType] newField) {
         this.id = id;
         this.title = title;
-        this.dueDate = dueDate;
+        this.newField = newField;
     }
     
     // Existing getters and setters
     // ... 
     
-    // New getter and setter for dueDate
-    public LocalDate getDueDate() {
-        return dueDate;
+    // New getter and setter for the new field
+    public [FieldType] getNewField() {
+        return newField;
     }
     
-    public void setDueDate(LocalDate dueDate) {
-        this.dueDate = dueDate;
+    public void setNewField([FieldType] newField) {
+        this.newField = newField;
     }
     
     // Update toString method
@@ -64,7 +65,7 @@ public class TaskServiceModel {
         return "TaskServiceModel{" +
                 "id='" + id + '\'' +
                 ", title='" + title + '\'' +
-                ", dueDate=" + dueDate +
+                ", newField=" + newField +
                 '}';
     }
 }
@@ -72,6 +73,8 @@ public class TaskServiceModel {
 
 ### Testing Considerations
 
-1. Ensure that existing code that uses TaskServiceModel still works with the new field being null
+1. Ensure that existing code that uses TaskServiceModel still works with the new field being null/default
 2. Test serialization/deserialization if applicable
-3. Test that the new field is properly set and retrieved through all service layer operations 
+3. Test that the new field is properly set and retrieved through all service layer operations
+4. For reference types (non-primitives), test null handling
+5. For primitive types, test default values 

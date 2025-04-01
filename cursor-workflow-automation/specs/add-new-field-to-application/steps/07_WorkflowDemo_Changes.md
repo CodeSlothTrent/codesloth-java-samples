@@ -4,27 +4,28 @@
 
 ## Changes Required
 
-Update the WorkflowDemo class to handle the collection, display, and management of task due dates in the user interface.
+Update the WorkflowDemo class to handle the collection, display, and management of the new field in the user interface.
 
 ### Implementation Details
 
-1. Update the menu options and input handling to collect due dates when adding tasks
-2. Modify the task display format to show due dates
-3. Add validation for date input
-4. Update UI messages to reference due dates
+1. Update the menu options and input handling to collect values for the new field when adding tasks
+2. Modify the task display format to show the new field's values
+3. Add validation for the new field input (if applicable)
+4. Update UI messages to reference the new field
 
 ### Code Example
 
 ```java
-// Add import
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+// Add any necessary imports for the field type
+// import java.time.LocalDate; // Example import for date type
+// import java.time.format.DateTimeFormatter; // Example formatter for date
+// import java.time.format.DateTimeParseException; // Example exception handling
 
 public class WorkflowDemo {
     private final TaskService taskService;
     private final Scanner scanner;
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    // Add any formatters or utility variables needed for handling the new field
+    // private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     
     // Constructor and other members...
 
@@ -41,23 +42,29 @@ public class WorkflowDemo {
         System.out.print("Enter task title: ");
         String title = scanner.nextLine();
         
-        // Add due date input with validation
-        System.out.print("Enter due date (yyyy-MM-dd) or leave empty if none: ");
-        String dueDateStr = scanner.nextLine();
+        // Add new field input with validation if needed
+        System.out.print("Enter [field description] or leave empty if none: ");
+        String inputValue = scanner.nextLine();
         
-        LocalDate dueDate = null;
-        if (!dueDateStr.trim().isEmpty()) {
+        [FieldType] newFieldValue = null; // Or appropriate default for primitive types
+        if (!inputValue.trim().isEmpty()) {
             try {
-                dueDate = LocalDate.parse(dueDateStr, DATE_FORMATTER);
-            } catch (DateTimeParseException e) {
-                System.out.println("Invalid date format. Due date will not be set.");
+                // Parse or convert the input string to the appropriate type
+                // Example for different types:
+                // For String: newFieldValue = inputValue;
+                // For Integer: newFieldValue = Integer.parseInt(inputValue);
+                // For LocalDate: newFieldValue = LocalDate.parse(inputValue, DATE_FORMATTER);
+                
+                // Add appropriate error handling for the field type
+            } catch (Exception e) {
+                System.out.println("Invalid format. The new field will not be set.");
             }
         }
         
-        // Use the factory to create a task with or without a due date
-        TaskDTO taskDTO = dueDate == null 
+        // Use the factory to create a task with or without the new field
+        TaskDTO taskDTO = newFieldValue == null 
             ? TaskFactory.createTaskDTO(title)
-            : TaskFactory.createTaskDTO(title, dueDate);
+            : TaskFactory.createTaskDTO(title, newFieldValue);
         
         taskService.addTask(taskDTO);
         System.out.println("Task created successfully!");
@@ -72,19 +79,34 @@ public class WorkflowDemo {
             return;
         }
         
-        // Update the display format to include due date
-        System.out.printf("%-5s | %-30s | %-12s%n", "ID", "Title", "Due Date");
+        // Update the display format to include the new field
+        System.out.printf("%-5s | %-30s | %-20s%n", "ID", "Title", "New Field");
         System.out.println("------------------------------------------------------------------------");
         
         for (TaskDTO task : tasks) {
-            String dueDateStr = task.getDueDate() == null ? "Not set" : 
-                                task.getDueDate().format(DATE_FORMATTER);
+            // Format the new field value appropriately
+            String fieldValueStr = formatFieldValue(task.getNewField());
             
-            System.out.printf("%-5s | %-30s | %-12s%n", 
+            System.out.printf("%-5s | %-30s | %-20s%n", 
                               task.getId(), 
                               task.getTitle(), 
-                              dueDateStr);
+                              fieldValueStr);
         }
+    }
+    
+    // Helper method to format the new field value for display
+    private String formatFieldValue([FieldType] value) {
+        if (value == null) {
+            return "Not set";
+        }
+        
+        // Format the value appropriately for its type
+        // Examples:
+        // For String: return value;
+        // For LocalDate: return value.format(DATE_FORMATTER);
+        // For numeric types: return String.valueOf(value);
+        
+        return value.toString(); // Default implementation
     }
     
     // Other methods...
@@ -93,9 +115,10 @@ public class WorkflowDemo {
 
 ### Testing Considerations
 
-1. Test adding tasks with valid due dates
-2. Test adding tasks with invalid date formats
-3. Test adding tasks with empty due dates
-4. Verify that due dates are correctly displayed in the task list
+1. Test adding tasks with valid values for the new field
+2. Test adding tasks with invalid input formats (if applicable)
+3. Test adding tasks with empty values for the new field
+4. Verify that the new field is correctly displayed in the task list
 5. Test existing functionality to ensure it's not disrupted by these changes
+6. Test handling of different value formats and edge cases specific to the field type
 </rewritten_file> 

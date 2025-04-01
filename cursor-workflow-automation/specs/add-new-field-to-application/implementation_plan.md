@@ -2,6 +2,46 @@
 
 This document outlines the step-by-step process for adding a new field to the task management application, ensuring it flows through all layers of the architecture.
 
+## Progress Tracking
+
+To ensure the implementation can be resumed in case of interruption, create a progress tracking file:
+
+1. **Create Progress Tracking File**
+   - Create a file named `update_process.md` in the project root directory
+   - Use this file to record each step as it is completed
+   - Format each entry with the step number, file path, and timestamp
+   - Example entry:
+     ```
+     [YYYY-MM-DD HH:MM] Step 1: Updated TaskDTO.java - Added new field with getters and setters
+     ```
+   - Before starting each step, check this file to see which steps have been completed
+   - After completing each step, add an entry to this file
+   - Delete this file after successful verification of all changes
+
+Sample progress tracking file content:
+```markdown
+# Field Implementation Progress Tracker
+
+This file tracks the progress of implementing the new field across the application.
+Delete this file once all changes have been verified.
+
+## Completed Steps
+
+[YYYY-MM-DD HH:MM] Step 1: Updated TaskDTO.java
+[YYYY-MM-DD HH:MM] Step 2: Updated TaskServiceModel.java
+...
+
+## Pending Steps
+
+- Step X: ...
+- Step Y: ...
+
+## Notes
+
+Any issues encountered or special considerations:
+- ...
+```
+
 ## Implementation Steps
 
 Follow these steps in order to ensure a smooth implementation:

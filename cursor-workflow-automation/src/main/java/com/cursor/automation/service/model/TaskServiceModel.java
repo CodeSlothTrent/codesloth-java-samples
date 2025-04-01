@@ -6,6 +6,7 @@ package com.cursor.automation.service.model;
 public class TaskServiceModel {
     private String id;
     private String title;
+    private TaskStatusService status;
 
     public TaskServiceModel() {
     }
@@ -13,6 +14,13 @@ public class TaskServiceModel {
     public TaskServiceModel(String id, String title) {
         this.id = id;
         this.title = title;
+        this.status = TaskStatusService.TODO; // Default status
+    }
+
+    public TaskServiceModel(String id, String title, TaskStatusService status) {
+        this.id = id;
+        this.title = title;
+        this.status = status;
     }
 
     public String getId() {
@@ -31,11 +39,20 @@ public class TaskServiceModel {
         this.title = title;
     }
 
+    public TaskStatusService getStatus() {
+        return status;
+    }
+
+    public void setStatus(TaskStatusService status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         return "TaskServiceModel{" +
                 "id='" + id + '\'' +
                 ", title='" + title + '\'' +
+                ", status=" + status +
                 '}';
     }
 } 

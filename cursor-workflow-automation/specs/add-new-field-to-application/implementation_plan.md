@@ -1,166 +1,136 @@
-# Implementation Plan for Adding a New Field
+# Implementation Plan: Adding a New Field to Task Management Application
 
-This document outlines the step-by-step process for adding a new field to the task management application, ensuring it flows through all layers of the architecture.
+This document outlines the step-by-step approach for adding a new field to the existing Task Management Application.
 
 ## Progress Tracking
 
-To ensure the implementation can be resumed in case of interruption, create a progress tracking file:
+1. Create a file `update_process.md` at the root of the project to track progress.
+2. Document each step as it is completed with timestamps.
+3. Delete the tracking file once all changes have been verified.
 
-1. **Create Progress Tracking File**
-   - Create a file named `update_process.md` in the project root directory
-   - Use this file to record each step as it is completed
-   - Format each entry with the step number, file path, and timestamp
-   - Example entry:
-     ```
-     [YYYY-MM-DD HH:MM] Step 1: Updated TaskDTO.java - Added new field with getters and setters
-     ```
-   - Before starting each step, check this file to see which steps have been completed
-   - After completing each step, add an entry to this file
-   - Delete this file after successful verification of all changes
+## Enum Type Creation (For enum fields)
 
-Sample progress tracking file content:
-```markdown
-# Field Implementation Progress Tracker
+If the new field is an enum type, create separate enum declarations for each architectural layer to maintain proper separation of concerns.
 
-This file tracks the progress of implementing the new field across the application.
-Delete this file once all changes have been verified.
+1. **Create Presentation Layer Enum (DTO Layer)**
+   - Create a new enum in the `com.cursor.automation.model.dto` package
+   - Define all enum values needed for the presentation layer
+   - Document with appropriate comments
 
-## Completed Steps
+2. **Create Service Layer Enum**
+   - Create a new enum in the `com.cursor.automation.service.model` package
+   - Define all enum values needed for the service layer
+   - Document with appropriate comments
 
-[YYYY-MM-DD HH:MM] Step 1: Updated TaskDTO.java
-[YYYY-MM-DD HH:MM] Step 2: Updated TaskServiceModel.java
-...
+3. **Create Data Access Layer Enum**
+   - Create a new enum in the `com.cursor.automation.dal.model` package
+   - Define all enum values needed for the data access layer
+   - Document with appropriate comments
 
-## Pending Steps
+4. **Create Enum Type Mapper**
+   - Create a mapper utility class in the `com.cursor.automation.mapper` package to convert between enum types
+   - Implement conversion methods between all enum types
+   - Document with appropriate comments
 
-- Step X: ...
-- Step Y: ...
-
-## Notes
-
-Any issues encountered or special considerations:
-- ...
-```
-
-## Implementation Steps
-
-Follow these steps in order to ensure a smooth implementation:
-
-### 1. Model Updates
+## Model Updates
 
 1. **Update TaskDTO**
-   - File: `src/main/java/com/cursor/automation/model/dto/TaskDTO.java`
-   - Changes: Add the new field, getters, setters, and constructors
-   - Reference: [01_TaskDTO_Changes.md](steps/01_TaskDTO_Changes.md)
+   - Add the new field to the DTO class with appropriate type (use DTO layer enum if applicable)
+   - Add getters and setters
+   - Update constructors as needed
+   - Update equals and hashCode methods if present
 
 2. **Update TaskServiceModel**
-   - File: `src/main/java/com/cursor/automation/service/model/TaskServiceModel.java`
-   - Changes: Add the new field, getters, setters, and constructors
-   - Reference: [02_TaskServiceModel_Changes.md](steps/02_TaskServiceModel_Changes.md)
+   - Add the new field to the service model class with appropriate type (use service layer enum if applicable)
+   - Add getters and setters
+   - Update constructors as needed
+   - Update equals and hashCode methods if present
 
 3. **Update TaskEntity**
-   - File: `src/main/java/com/cursor/automation/dal/model/TaskEntity.java`
-   - Changes: Add the new field, getters, setters, and constructors
-   - Reference: [03_TaskEntity_Changes.md](steps/03_TaskEntity_Changes.md)
+   - Add the new field to the entity class with appropriate type (use data access layer enum if applicable)
+   - Add getters and setters
+   - Update constructors as needed
+   - Update equals and hashCode methods if present
 
-### 2. Mapper Updates
+## Mapper Updates
 
-4. **Update TaskDTOMapper**
-   - File: `src/main/java/com/cursor/automation/mapper/TaskDTOMapper.java`
-   - Changes: Modify mapping methods to include the new field
-   - Reference: [04_TaskDTOMapper_Changes.md](steps/04_TaskDTOMapper_Changes.md)
+1. **Update TaskDTOMapper**
+   - Update the toServiceModel method to include mapping the new field
+   - Update the toDTO method to include mapping the new field
+   - For enum fields, use the dedicated enum mapper to convert between types
+   - Update any other affected methods (e.g., toDTOList)
 
-5. **Update TaskEntityMapper**
-   - File: `src/main/java/com/cursor/automation/mapper/TaskEntityMapper.java`
-   - Changes: Modify mapping methods to include the new field
-   - Reference: [05_TaskEntityMapper_Changes.md](steps/05_TaskEntityMapper_Changes.md)
+2. **Update TaskEntityMapper**
+   - Update the toServiceModel method to include mapping the new field
+   - Update the toEntity method to include mapping the new field
+   - For enum fields, use the dedicated enum mapper to convert between types
+   - Update any other affected methods (e.g., toServiceModelList)
 
-### 3. Factory Updates
+## Factory Updates
 
-6. **Update TaskFactory**
-   - File: `src/main/java/com/cursor/automation/factory/TaskFactory.java`
-   - Changes: Add new factory methods that accept the new field parameter
-   - Reference: [06_TaskFactory_Changes.md](steps/06_TaskFactory_Changes.md)
+1. **Update TaskFactory**
+   - Update existing factory methods to set the new field
+   - Add new factory methods with the new field as a parameter if needed
+   - Ensure appropriate layer-specific types are used (e.g., service layer enums for service models)
 
-### 4. UI Updates
+## UI Updates
 
-7. **Update WorkflowDemo**
-   - File: `src/main/java/com/cursor/automation/WorkflowDemo.java`
-   - Changes: Update UI to collect, display, and handle the new field
-   - Reference: [07_WorkflowDemo_Changes.md](steps/07_WorkflowDemo_Changes.md)
+1. **Update WorkflowDemo**
+   - Update the UI to collect input for the new field
+   - Update the display of tasks to show the new field
+   - For enum fields, add a prompt method to select valid values
+   - Handle validation for the new field
 
-### 5. Test Updates
+## Test Updates
 
-8. **Update TaskServiceImplTest**
-   - File: `src/test/java/com/cursor/automation/service/TaskServiceImplTest.java`
-   - Changes: Add tests for the new field in service operations
-   - Reference: [08_TaskServiceImplTest_Changes.md](steps/08_TaskServiceImplTest_Changes.md)
+1. **Update TaskServiceImplTest**
+   - Add tests for the service with the new field
+   - Update existing tests to include the new field
+   - For enum fields, test all possible values
 
-9. **Update Mapper Tests**
-   - Files: 
-     - `src/test/java/com/cursor/automation/mapper/TaskDTOMapperTest.java`
-     - `src/test/java/com/cursor/automation/mapper/TaskEntityMapperTest.java`
-   - Changes: Add tests for mapping the new field
-   - Reference: [09_Mapper_Tests_Changes.md](steps/09_Mapper_Tests_Changes.md)
+2. **Update Mapper Tests**
+   - Update TaskDTOMapperTest to test mapping the new field
+   - Update TaskEntityMapperTest to test mapping the new field
+   - For enum fields, test mapping of all enum values
+   - For enum fields, add tests for the dedicated enum mapper
 
-10. **Update WorkflowDemoTest**
-    - File: `src/test/java/com/cursor/automation/WorkflowDemoTest.java`
-    - Changes: Add tests for UI handling of the new field
-    - Reference: [10_WorkflowDemoTest_Changes.md](steps/10_WorkflowDemoTest_Changes.md)
+3. **Update WorkflowDemoTest**
+   - Add tests for UI handling of the new field
+   - Test input and display of the new field
+   - For enum fields, test selecting different values
+   - Test validation of the new field
 
-## Verification Steps
+## Verification
 
-After implementing the changes:
+After implementing all the changes, verify that:
 
-1. Run all tests to ensure they pass
-2. Run the application manually and test the following scenarios:
-   - Adding a task with the new field populated
-   - Adding a task without the new field populated
-   - Entering invalid values for the new field (if applicable)
-   - Viewing tasks with different values for the new field
+1. The new field is properly stored and retrieved in all layers.
+2. The application behaves correctly with the new field.
+3. All tests pass, including the new tests for the new field.
+4. The UI correctly collects and displays the new field.
+5. For enum fields, conversions between layer-specific enums work correctly.
 
 ## Rollback Plan
 
-If issues are encountered:
+If any issues are encountered during implementation or verification:
 
-1. Revert the changes to each file in reverse order
-2. Run tests to ensure the application is back to its original state
+1. Revert all changes to the affected files.
+2. Implement a simplified version of the feature if the original design is too complex.
+3. Document any issues encountered for future reference.
 
-## Script Execution
-
-A script could be created to apply these changes if desired:
+## Script for Executing This Plan
 
 ```bash
-#!/bin/bash
+# 1. Create progress tracking file
+echo "# Field Implementation Progress Tracker" > update_process.md
 
-# Implementation script for adding a new field
-# This script applies all the changes defined in the spec files
+# 2. Implement each step and document in the tracking file
+# (Manually execute and verify each step)
 
-echo "Implementing new field in the Task Management Application..."
-
-# 1. Update model classes
-echo "Updating model classes..."
-# Add implementation commands here
-
-# 2. Update mappers
-echo "Updating mappers..."
-# Add implementation commands here
-
-# 3. Update factory
-echo "Updating factory..."
-# Add implementation commands here
-
-# 4. Update UI
-echo "Updating UI..."
-# Add implementation commands here
-
-# 5. Update tests
-echo "Updating tests..."
-# Add implementation commands here
-
-echo "Implementation complete. Running tests..."
-cd cursor-workflow-automation
+# 3. Run tests to verify changes
 mvn test
 
-echo "Done!"
+# 4. If all tests pass, the implementation is complete
+# Delete the tracking file when done
+rm update_process.md
 ``` 

@@ -22,10 +22,17 @@ public class TaskEntityMapper {
             return null;
         }
         
-        return new TaskEntity(
+        TaskEntity entity = new TaskEntity(
             serviceModel.getId(),
             serviceModel.getTitle()
         );
+        
+        // Map the status enum using the TaskStatusMapper
+        if (serviceModel.getStatus() != null) {
+            entity.setStatus(TaskStatusMapper.toEntityStatus(serviceModel.getStatus()));
+        }
+        
+        return entity;
     }
     
     /**
@@ -39,10 +46,17 @@ public class TaskEntityMapper {
             return null;
         }
         
-        return new TaskServiceModel(
+        TaskServiceModel serviceModel = new TaskServiceModel(
             entity.getId(),
             entity.getTitle()
         );
+        
+        // Map the status enum using the TaskStatusMapper
+        if (entity.getStatus() != null) {
+            serviceModel.setStatus(TaskStatusMapper.toServiceStatus(entity.getStatus()));
+        }
+        
+        return serviceModel;
     }
     
     /**

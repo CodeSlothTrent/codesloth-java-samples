@@ -4,6 +4,7 @@ import com.cursor.automation.dal.InMemoryTaskRepository;
 import com.cursor.automation.dal.TaskRepository;
 import com.cursor.automation.mapper.TaskDTOMapper;
 import com.cursor.automation.model.dto.TaskDTO;
+import com.cursor.automation.model.dto.TaskStatusDTO;
 import com.cursor.automation.service.TaskService;
 import com.cursor.automation.service.TaskServiceImpl;
 import com.cursor.automation.service.model.TaskServiceModel;
@@ -61,14 +62,17 @@ public class WorkflowDemo {
             // Create some sample tasks - now using DTOs
             TaskDTO task1 = new TaskDTO();
             task1.setTitle("Setup development environment");
+            task1.setStatus(TaskStatusDTO.DONE);
             taskService.createTask(task1);
             
             TaskDTO task2 = new TaskDTO();
             task2.setTitle("Design database schema");
+            task2.setStatus(TaskStatusDTO.IN_PROGRESS);
             taskService.createTask(task2);
             
             TaskDTO task3 = new TaskDTO();
             task3.setTitle("Write documentation");
+            task3.setStatus(TaskStatusDTO.TODO);
             taskService.createTask(task3);
             
             System.out.println("Sample tasks added successfully");
@@ -114,9 +118,13 @@ public class WorkflowDemo {
             System.out.print("Enter task title: ");
             String title = scanner.nextLine();
             
+            // Get task status from user
+            TaskStatusDTO status = promptForTaskStatus();
+            
             // Create a DTO with the input data
             TaskDTO taskDTO = new TaskDTO();
             taskDTO.setTitle(title);
+            taskDTO.setStatus(status);
             
             // Call service to create task directly with DTO
             TaskServiceModel createdTask = taskService.createTask(taskDTO);
@@ -129,6 +137,30 @@ public class WorkflowDemo {
         } catch (Exception e) {
             logger.error("Error creating task", e);
             System.out.println("Error creating task: " + e.getMessage());
+        }
+    }
+    
+    private TaskStatusDTO promptForTaskStatus() {
+        while (true) {
+            System.out.println("\nSelect task status:");
+            System.out.println("1. TODO");
+            System.out.println("2. IN_PROGRESS");
+            System.out.println("3. BLOCKED");
+            System.out.println("4. IN_REVIEW");
+            System.out.println("5. DONE");
+            System.out.print("Enter choice (1-5): ");
+            
+            String choice = scanner.nextLine();
+            
+            switch (choice) {
+                case "1": return TaskStatusDTO.TODO;
+                case "2": return TaskStatusDTO.IN_PROGRESS;
+                case "3": return TaskStatusDTO.BLOCKED;
+                case "4": return TaskStatusDTO.IN_REVIEW;
+                case "5": return TaskStatusDTO.DONE;
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
         }
     }
     
@@ -146,14 +178,15 @@ public class WorkflowDemo {
             return;
         }
         
-        System.out.println(String.format("%-36s %-50s", 
-                "ID", "Title"));
-        System.out.println("-".repeat(90));
+        System.out.println(String.format("%-36s %-40s %-15s", 
+                "ID", "Title", "Status"));
+        System.out.println("-".repeat(95));
         
         for (TaskDTO taskDTO : taskDTOs) {
-            System.out.println(String.format("%-36s %-50s",
+            System.out.println(String.format("%-36s %-40s %-15s",
                     taskDTO.getId(),
-                    taskDTO.getTitle()
+                    taskDTO.getTitle(),
+                    taskDTO.getStatus()
             ));
         }
     }

@@ -6,6 +6,7 @@ package com.cursor.automation.model.dto;
 public class TaskDTO {
     private String id;
     private String title;
+    private TaskStatusDTO status;
 
     public TaskDTO() {
     }
@@ -13,6 +14,13 @@ public class TaskDTO {
     public TaskDTO(String id, String title) {
         this.id = id;
         this.title = title;
+        this.status = TaskStatusDTO.TODO; // Default status
+    }
+
+    public TaskDTO(String id, String title, TaskStatusDTO status) {
+        this.id = id;
+        this.title = title;
+        this.status = status;
     }
 
     public String getId() {
@@ -31,11 +39,20 @@ public class TaskDTO {
         this.title = title;
     }
 
+    public TaskStatusDTO getStatus() {
+        return status;
+    }
+
+    public void setStatus(TaskStatusDTO status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         return "TaskDTO{" +
                 "id='" + id + '\'' +
                 ", title='" + title + '\'' +
+                ", status=" + status +
                 '}';
     }
 } 

@@ -22,10 +22,17 @@ public class TaskDTOMapper {
             return null;
         }
         
-        return new TaskServiceModel(
+        TaskServiceModel serviceModel = new TaskServiceModel(
             dto.getId(),
             dto.getTitle()
         );
+        
+        // Map the status enum using the TaskStatusMapper
+        if (dto.getStatus() != null) {
+            serviceModel.setStatus(TaskStatusMapper.toServiceStatus(dto.getStatus()));
+        }
+        
+        return serviceModel;
     }
     
     /**
@@ -39,10 +46,17 @@ public class TaskDTOMapper {
             return null;
         }
         
-        return new TaskDTO(
+        TaskDTO dto = new TaskDTO(
             serviceModel.getId(),
             serviceModel.getTitle()
         );
+        
+        // Map the status enum using the TaskStatusMapper
+        if (serviceModel.getStatus() != null) {
+            dto.setStatus(TaskStatusMapper.toDTOStatus(serviceModel.getStatus()));
+        }
+        
+        return dto;
     }
     
     /**

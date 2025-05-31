@@ -51,9 +51,9 @@ public class OpenSearchClusterController {
             // Analyze single alarm and determine remediation action
             RemediationAction action = analyzeAndPlanRemediation(cluster, metrics);
             
-            // Check cooldown and execute if allowed
-            if (action != null && cooldownManager.canExecuteAction(cluster.getMetadata().getName(), action.getRuleName())) {
-                executeRemediationAction(cluster, action, metrics);
+            // Execute action with intelligent cooldown handling
+            if (action != null) {
+                handleActionWithCooldown(cluster, action, metrics);
             }
             
             // Update cluster status in Kubernetes API
@@ -141,9 +141,88 @@ public class OpenSearchClusterController {
         return null;
     }
     
-
+    private void handleActionWithCooldown(OpenSearchCluster cluster, RemediationAction action, CloudWatchMetrics metrics) {
+        String clusterName = cluster.getMetadata().getName();
+        String ruleName = action.getRuleName();
+        
+        // Use state-aware cooldown checking
+        if (cooldownManager.canExecuteActionWithState(clusterName, ruleName, cluster)) {
+            // Normal execution - no cooldown or state conflicts
+            executeRemediationAction(cluster, action, metrics);
+        } else {
+            // Action blocked - determine if it's time cooldown or state conflict
+            boolean timeBlocked = !cooldownManager.isTimeCooldownExpired(clusterName, ruleName);
+            String alarmSeverity = metricsAnalyzer.getAlarmSeverity(metrics);
+            
+            if (!timeBlocked) {
+                // Blocked by cluster state (e.g., already scaling)
+                log.info("Action {} blocked for cluster {} - cluster in incompatible state ({}). Alarm severity: {}", 
+                    action.getType(), clusterName, cluster.getStatus().getPhase(), alarmSeverity);
+                
+                // For state conflicts, we generally don't retry unless critical
+                if ("CRITICAL".equals(alarmSeverity)) {
+                    log.warn("CRITICAL alarm {} - monitoring cluster state for completion", action.getReason());
+                    // Could schedule a state-check retry here in future enhancement
+                }
+                
+            } else if ("CRITICAL".equals(alarmSeverity)) {
+                // Critical alarms bypass time cooldown but still respect state
+                if (cooldownManager.isClusterReadyForAction(clusterName, ruleName, cluster)) {
+                    log.warn("CRITICAL alarm {} for cluster {} - bypassing time cooldown due to severity", 
+                        action.getReason(), clusterName);
+                    executeRemediationAction(cluster, action, metrics);
+                } else {
+                    log.warn("CRITICAL alarm {} blocked by cluster state {} - cannot bypass", 
+                        action.getReason(), cluster.getStatus().getPhase());
+                }
+                
+            } else {
+                // Schedule delayed retry for non-critical time-based cooldowns
+                Duration remainingCooldown = cooldownManager.getRemainingCooldown(clusterName, ruleName);
+                log.info("Action {} blocked by time cooldown for cluster {}. Scheduling retry in {}", 
+                    action.getType(), clusterName, remainingCooldown);
+                
+                scheduleDelayedAction(cluster, action, metrics, remainingCooldown);
+            }
+        }
+    }
     
-
+    private void scheduleDelayedAction(OpenSearchCluster cluster, RemediationAction action, 
+                                     CloudWatchMetrics metrics, Duration delay) {
+        // Schedule action to execute after cooldown expires
+        CompletableFuture.delayedExecutor(delay.toSeconds(), java.util.concurrent.TimeUnit.SECONDS)
+            .execute(() -> {
+                try {
+                    // Re-check if action is still needed (alarm might have cleared)
+                    if (isAlarmStillActive(cluster, action)) {
+                        log.info("Executing delayed action {} for cluster {} after cooldown", 
+                            action.getType(), cluster.getMetadata().getName());
+                        executeRemediationAction(cluster, action, metrics);
+                    } else {
+                        log.info("Skipping delayed action {} for cluster {} - alarm cleared", 
+                            action.getType(), cluster.getMetadata().getName());
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to execute delayed action: {}", e.getMessage(), e);
+                }
+            });
+    }
+    
+    private boolean isAlarmStillActive(OpenSearchCluster cluster, RemediationAction action) {
+        // Check if we should still execute this action
+        // In a real implementation, you might query CloudWatch or check cluster metrics
+        // For now, assume the action is still needed if cluster can be improved
+        
+        if (action.getType() == RemediationAction.ActionType.SCALE_OUT) {
+            return cluster.canScale() && cluster.getSpec().getNodeCount() < cluster.getMaxNodes();
+        } else if (action.getType() == RemediationAction.ActionType.CREATE_NEW_CLUSTER) {
+            return true; // Critical latency issues usually need new clusters
+        } else if (action.getType() == RemediationAction.ActionType.ALERT_CRITICAL) {
+            return true; // Always send alerts
+        }
+        
+        return true; // Default to executing the action
+    }
     
     private void executeRemediationAction(OpenSearchCluster cluster, RemediationAction action, CloudWatchMetrics metrics) {
         try {

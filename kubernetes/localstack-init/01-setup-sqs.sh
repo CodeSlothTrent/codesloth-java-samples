@@ -26,6 +26,7 @@ done
 awslocal sqs create-queue --queue-name cluster-requests --attributes VisibilityTimeoutSeconds=300,MessageRetentionPeriod=1209600
 awslocal sqs create-queue --queue-name cluster-deletions --attributes VisibilityTimeoutSeconds=300,MessageRetentionPeriod=1209600
 awslocal sqs create-queue --queue-name cluster-requests-dlq --attributes VisibilityTimeoutSeconds=300,MessageRetentionPeriod=1209600
+awslocal sqs create-queue --queue-name cluster-metrics --attributes VisibilityTimeoutSeconds=300,MessageRetentionPeriod=1209600
 
 # Create basic IAM role for the application
 awslocal iam create-role --role-name OpenSearchClusterManager --assume-role-policy-document '{

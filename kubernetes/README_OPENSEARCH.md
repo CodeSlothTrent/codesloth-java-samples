@@ -347,3 +347,13 @@ Your application needs these AWS permissions:
 - ✅ Experience with SQS message processing
 
 This approach gives you the best of both worlds: local development convenience with production-ready AWS service integration! 
+
+graph TD
+    A["👀 Watch API Server"] --> B["📊 Compare Current vs Desired State"]
+    B --> C{"States Match?"}
+    C -->|No| D["🔧 Take Corrective Action"]
+    C -->|Yes| A
+    D --> A
+    
+    E["📝 Desired State<br/>(YAML manifests)"] --> B
+    F["⚡ Current State<br/>(Running pods, services)"] --> B 

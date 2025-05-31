@@ -20,6 +20,7 @@ aws:
   sqs:
     cluster-requests-queue: cluster-requests
     cluster-deletion-queue: cluster-deletions
+    metrics-queue: cluster-metrics
 
 # Spring Cloud AWS SQS Configuration
 spring.cloud.aws:

@@ -1,0 +1,154 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: elasticsearchclusters.elasticsearch.example.com
+spec:
+  group: elasticsearch.example.com
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              clusterName:
+                type: string
+                description: "Name of the Elasticsearch cluster"
+              nodeCount:
+                type: integer
+                minimum: 1
+                maximum: 50
+                description: "Number of nodes in the cluster"
+              version:
+                type: string
+                description: "Elasticsearch version"
+              instanceType:
+                type: string
+                description: "AWS instance type for nodes"
+              thresholds:
+                type: object
+                properties:
+                  cpuHigh:
+                    type: number
+                    description: "CPU threshold for scaling out (%)"
+                  cpuLow:
+                    type: number
+                    description: "CPU threshold for scaling in (%)"
+                  memoryHigh:
+                    type: number
+                    description: "Memory threshold for scaling out (%)"
+                  memoryLow:
+                    type: number
+                    description: "Memory threshold for scaling in (%)"
+                  diskHigh:
+                    type: number
+                    description: "Disk threshold for alerts (%)"
+                  latencyHigh:
+                    type: number
+                    description: "Search latency threshold (ms)"
+                  queryRateHigh:
+                    type: number
+                    description: "Query rate threshold (queries/sec)"
+              autoScaling:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    description: "Enable auto-scaling"
+                  minNodes:
+                    type: integer
+                    minimum: 1
+                    description: "Minimum number of nodes"
+                  maxNodes:
+                    type: integer
+                    minimum: 1
+                    description: "Maximum number of nodes"
+                  cooldownPeriod:
+                    type: string
+                    description: "Cooldown period between scaling actions"
+              remediationRules:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    condition:
+                      type: string
+                    action:
+                      type: string
+                    cooldown:
+                      type: string
+                    priority:
+                      type: string
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+                enum: ["Pending", "Creating", "Ready", "Scaling", "Error"]
+                description: "Current phase of the cluster"
+              nodeCount:
+                type: integer
+                description: "Current number of nodes"
+              endpoint:
+                type: string
+                description: "Cluster endpoint URL"
+              currentMetrics:
+                type: object
+                properties:
+                  cpu:
+                    type: number
+                  memory:
+                    type: number
+                  disk:
+                    type: number
+                  latency:
+                    type: number
+                  queryRate:
+                    type: number
+                  lastUpdated:
+                    type: string
+              lastAction:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  reason:
+                    type: string
+                  timestamp:
+                    type: string
+                  success:
+                    type: boolean
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    lastTransitionTime:
+                      type: string
+                    reason:
+                      type: string
+                    message:
+                      type: string
+  scope: Namespaced
+  names:
+    plural: elasticsearchclusters
+    singular: elasticsearchcluster
+    kind: ElasticsearchCluster
+    shortNames:
+    - es
+    - elasticsearch
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elasticsearch-operator 

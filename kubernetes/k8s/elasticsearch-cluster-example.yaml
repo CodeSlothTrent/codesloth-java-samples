@@ -1,0 +1,79 @@
+apiVersion: elasticsearch.example.com/v1
+kind: ElasticsearchCluster
+metadata:
+  name: production-cluster
+  namespace: elasticsearch-operator
+spec:
+  clusterName: production-es-cluster
+  nodeCount: 3
+  version: "OpenSearch_2.11"
+  instanceType: "m6g.large.search"
+  thresholds:
+    cpuHigh: 80.0        # Scale out if CPU > 80%
+    cpuLow: 30.0         # Scale in if CPU < 30%
+    memoryHigh: 85.0     # Scale out if memory > 85%
+    memoryLow: 40.0      # Scale in if memory < 40%
+    diskHigh: 90.0       # Alert if disk > 90%
+    latencyHigh: 200.0   # Optimize if P95 latency > 200ms
+    queryRateHigh: 100.0 # Scale if query rate > 100/sec
+  autoScaling:
+    enabled: true
+    minNodes: 2
+    maxNodes: 10
+    cooldownPeriod: "10m"
+  remediationRules:
+    - name: "high-cpu-memory"
+      condition: "cpu > 80 AND memory > 75"
+      action: "scale_out"
+      cooldown: "10m"
+      priority: "high"
+    - name: "critical-latency"
+      condition: "latency_p95 > 500"
+      action: "create_new_cluster"
+      cooldown: "30m"
+      priority: "critical"
+    - name: "disk-space-critical"
+      condition: "disk > 95"
+      action: "alert_critical"
+      cooldown: "5m"
+      priority: "critical"
+    - name: "low-utilization"
+      condition: "cpu < 30 AND memory < 40 AND nodeCount > minNodes"
+      action: "scale_in"
+      cooldown: "30m"
+      priority: "low"
+    - name: "query-overload"
+      condition: "queryRate > 100 AND latency > 300"
+      action: "preemptive_scale"
+      cooldown: "15m"
+      priority: "high"
+---
+apiVersion: elasticsearch.example.com/v1
+kind: ElasticsearchCluster
+metadata:
+  name: development-cluster
+  namespace: elasticsearch-operator
+spec:
+  clusterName: dev-es-cluster
+  nodeCount: 1
+  version: "OpenSearch_2.11"
+  instanceType: "t3.small.search"
+  thresholds:
+    cpuHigh: 90.0        # More relaxed for dev
+    cpuLow: 20.0
+    memoryHigh: 90.0
+    memoryLow: 30.0
+    diskHigh: 95.0
+    latencyHigh: 500.0   # More relaxed for dev
+    queryRateHigh: 50.0
+  autoScaling:
+    enabled: false       # Disabled for dev environment
+    minNodes: 1
+    maxNodes: 3
+    cooldownPeriod: "15m"
+  remediationRules:
+    - name: "dev-high-resources"
+      condition: "cpu > 90 OR memory > 90"
+      action: "alert"
+      cooldown: "30m"
+      priority: "medium" 

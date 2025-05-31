@@ -272,6 +272,134 @@ public class OpenSearchService {
     }
 
     /**
+     * Scale an existing cluster
+     */
+    public boolean scaleCluster(String clusterName, int newNodeCount) {
+        try {
+            log.info("Scaling cluster {} to {} nodes", clusterName, newNodeCount);
+            
+            UpdateDomainConfigRequest updateRequest = UpdateDomainConfigRequest.builder()
+                .domainName(clusterName)
+                .clusterConfig(ClusterConfig.builder()
+                    .instanceCount(newNodeCount)
+                    .build())
+                .build();
+            
+            UpdateDomainConfigResponse response = openSearchClient.updateDomainConfig(updateRequest);
+            log.info("Cluster scaling initiated: {}", response.domainConfig().clusterConfig().instanceCount());
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Failed to scale cluster {}: {}", clusterName, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Create cluster from OpenSearchCluster specification
+     */
+    public boolean createCluster(com.example.awsk8ssqs.model.OpenSearchCluster.ClusterSpec spec) {
+        try {
+            log.info("Creating OpenSearch cluster: {}", spec.getClusterName());
+            
+            CreateDomainRequest createRequest = CreateDomainRequest.builder()
+                .domainName(spec.getClusterName())
+                .engineVersion(spec.getVersion())
+                .clusterConfig(ClusterConfig.builder()
+                    .instanceType(OpenSearchPartitionInstanceType.fromValue(spec.getInstanceType()))
+                    .instanceCount(spec.getNodeCount())
+                    .dedicatedMasterEnabled(spec.getNodeCount() >= 3)
+                    .masterInstanceType(spec.getNodeCount() >= 3 ? OpenSearchPartitionInstanceType.fromValue(spec.getInstanceType()) : null)
+                    .masterInstanceCount(spec.getNodeCount() >= 3 ? 3 : null)
+                    .build())
+                .ebsOptions(EBSOptions.builder()
+                    .ebsEnabled(true)
+                    .volumeType(VolumeType.GP2)
+                    .volumeSize(20) // Default 20GB
+                    .build())
+                .accessPolicies(createAccessPolicy(spec.getClusterName()))
+                .build();
+            
+            CreateDomainResponse response = openSearchClient.createDomain(createRequest);
+            log.info("OpenSearch cluster creation initiated: {}", response.domainStatus().domainName());
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Failed to create cluster {}: {}", spec.getClusterName(), e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Optimize cluster settings based on performance issues
+     */
+    public boolean optimizeCluster(String clusterName, java.util.List<String> optimizations) {
+        try {
+            log.info("Optimizing cluster {} with: {}", clusterName, optimizations);
+            
+            // In a real implementation, these would update cluster settings via OpenSearch API
+            // For demo purposes, we'll simulate the optimization
+            for (String optimization : optimizations) {
+                switch (optimization) {
+                    case "query_cache":
+                        log.info("Enabling query cache optimization for cluster: {}", clusterName);
+                        break;
+                    case "field_data_cache":
+                        log.info("Optimizing field data cache for cluster: {}", clusterName);
+                        break;
+                    case "refresh_interval":
+                        log.info("Adjusting refresh interval for cluster: {}", clusterName);
+                        break;
+                    case "bulk_size":
+                        log.info("Optimizing bulk size for cluster: {}", clusterName);
+                        break;
+                    case "merge_policy":
+                        log.info("Optimizing merge policy for cluster: {}", clusterName);
+                        break;
+                    case "fielddata_limit":
+                        log.info("Adjusting field data limit for cluster: {}", clusterName);
+                        break;
+                    case "circuit_breaker":
+                        log.info("Configuring circuit breaker for cluster: {}", clusterName);
+                        break;
+                    default:
+                        log.warn("Unknown optimization: {}", optimization);
+                }
+            }
+            
+            // In LocalStack, we can't actually change OpenSearch settings,
+            // but in AWS we would use the OpenSearch client to update cluster configuration
+            log.info("Cluster optimization completed for: {}", clusterName);
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Failed to optimize cluster {}: {}", clusterName, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Create access policy for cluster
+     */
+    private String createAccessPolicy(String clusterName) {
+        return """
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "es:*",
+                        "Resource": "arn:aws:es:*:*:domain/%s/*"
+                    }
+                ]
+            }
+            """.formatted(clusterName);
+    }
+
+    /**
      * Waits for cluster to be deleted.
      */
     private void waitForClusterDeleted(String clusterName) {

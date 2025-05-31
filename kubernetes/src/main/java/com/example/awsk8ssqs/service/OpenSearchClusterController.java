@@ -76,213 +76,79 @@ public class OpenSearchClusterController {
         var thresholds = cluster.getSpec().getThresholds();
         var metricsData = metrics.getMetrics();
         
-        // CPU Analysis
-        if (metricsData.getCpu() != null) {
-            double cpuAvg = metricsData.getCpu().getAverage();
-            
-            if (cpuAvg > thresholds.getCpuHigh() && cluster.canScale()) {
+        // Simplified alarm-based remediation - CloudWatch already validated thresholds
+        String alarmSeverity = metricsAnalyzer.getAlarmSeverity(metrics);
+        var alarm = metrics.getAlarms().get(0);
+        String alarmName = alarm.getName().toLowerCase();
+        
+        // Determine action based on alarm type and severity
+        if (alarmName.contains("cpu") || alarmName.contains("memory")) {
+            if (cluster.canScale()) {
+                actions.add(RemediationAction.builder()
+                    .type(RemediationAction.ActionType.SCALE_OUT)
+                    .priority("CRITICAL".equals(alarmSeverity) ? RemediationAction.Priority.CRITICAL : RemediationAction.Priority.HIGH)
+                    .reason("CloudWatch alarm: " + alarm.getName())
+                    .targetNodes(cluster.getSpec().getNodeCount() + 1)
+                    .ruleName(alarmName.contains("cpu") ? "cpu-alarm-scale-out" : "memory-alarm-scale-out")
+                    .build());
+            }
+        } else if (alarmName.contains("latency")) {
+            if ("CRITICAL".equals(alarmSeverity)) {
+                actions.add(RemediationAction.builder()
+                    .type(RemediationAction.ActionType.CREATE_NEW_CLUSTER)
+                    .priority(RemediationAction.Priority.CRITICAL)
+                    .reason("Critical latency alarm: " + alarm.getName())
+                    .ruleName("critical-latency-alarm-new-cluster")
+                    .build());
+            } else if (cluster.canScale()) {
                 actions.add(RemediationAction.builder()
                     .type(RemediationAction.ActionType.SCALE_OUT)
                     .priority(RemediationAction.Priority.HIGH)
-                    .reason(String.format("CPU utilization %.1f%% exceeds threshold %.1f%%", cpuAvg, thresholds.getCpuHigh()))
-                    .targetNodes(calculateScaleOutNodes(cluster, cpuAvg, thresholds.getCpuHigh()))
-                    .ruleName("cpu-scale-out")
+                    .reason("Latency alarm: " + alarm.getName())
+                    .targetNodes(cluster.getSpec().getNodeCount() + 1)
+                    .ruleName("latency-alarm-scale-out")
                     .build());
-            } else if (cpuAvg < thresholds.getCpuLow() && canScaleIn(cluster)) {
+            } else {
                 actions.add(RemediationAction.builder()
-                    .type(RemediationAction.ActionType.SCALE_IN)
-                    .priority(RemediationAction.Priority.LOW)
-                    .reason(String.format("CPU utilization %.1f%% below threshold %.1f%%", cpuAvg, thresholds.getCpuLow()))
-                    .targetNodes(calculateScaleInNodes(cluster, cpuAvg, thresholds.getCpuLow()))
-                    .ruleName("cpu-scale-in")
+                    .type(RemediationAction.ActionType.OPTIMIZE_CLUSTER)
+                    .priority(RemediationAction.Priority.MEDIUM)
+                    .reason("Latency alarm but cannot scale: " + alarm.getName())
+                    .optimizations(List.of("refresh_interval", "merge_policy", "index_settings"))
+                    .ruleName("latency-alarm-optimization")
                     .build());
             }
-        }
-        
-        // Memory Analysis
-        if (metricsData.getMemory() != null) {
-            double memoryAvg = metricsData.getMemory().getAverage();
-            
-            if (memoryAvg > thresholds.getMemoryHigh() && cluster.canScale()) {
-                actions.add(RemediationAction.builder()
-                    .type(RemediationAction.ActionType.SCALE_OUT)
-                    .priority(RemediationAction.Priority.HIGH)
-                    .reason(String.format("Memory utilization %.1f%% exceeds threshold %.1f%%", memoryAvg, thresholds.getMemoryHigh()))
-                    .targetNodes(calculateScaleOutNodes(cluster, memoryAvg, thresholds.getMemoryHigh()))
-                    .ruleName("memory-scale-out")
-                    .build());
-            }
-        }
-        
-        // Latency Analysis
-        if (metricsData.getSearchLatency() != null) {
-            double latencyP95 = metricsData.getSearchLatency().getP95();
-            
-            if (latencyP95 > thresholds.getLatencyHigh()) {
-                if (latencyP95 > thresholds.getLatencyHigh() * 2.5) {
-                    // Critical latency - create new cluster
-                    actions.add(RemediationAction.builder()
-                        .type(RemediationAction.ActionType.CREATE_NEW_CLUSTER)
-                        .priority(RemediationAction.Priority.CRITICAL)
-                        .reason(String.format("Critical search latency %.1fms, creating new cluster", latencyP95))
-                        .ruleName("critical-latency-new-cluster")
-                        .build());
-                } else if (cluster.canScale()) {
-                    // High latency - scale out
-                    actions.add(RemediationAction.builder()
-                        .type(RemediationAction.ActionType.SCALE_OUT)
-                        .priority(RemediationAction.Priority.HIGH)
-                        .reason(String.format("Search latency %.1fms exceeds threshold %.1fms", latencyP95, thresholds.getLatencyHigh()))
-                        .targetNodes(cluster.getSpec().getNodeCount() + 1)
-                        .ruleName("latency-scale-out")
-                        .build());
-                } else {
-                    // Can't scale - optimize cluster
-                    actions.add(RemediationAction.builder()
-                        .type(RemediationAction.ActionType.OPTIMIZE_CLUSTER)
-                        .priority(RemediationAction.Priority.MEDIUM)
-                        .reason(String.format("Search latency %.1fms high but cannot scale", latencyP95))
-                        .optimizations(List.of("refresh_interval", "merge_policy", "index_settings"))
-                        .ruleName("latency-optimization")
-                        .build());
-                }
-            }
-        }
-        
-        // Combined stress analysis
-        if (isUnderCombinedStress(cluster, metrics)) {
-            actions.add(RemediationAction.builder()
-                .type(RemediationAction.ActionType.EMERGENCY_SCALE)
-                .priority(RemediationAction.Priority.IMMEDIATE)
-                .reason("Cluster under combined resource stress")
-                .targetNodes(Math.min(cluster.getSpec().getNodeCount() * 2, cluster.getMaxNodes()))
-                .ruleName("emergency-scale")
-                .build());
-        }
-        
-        // Disk space analysis
-        if (metricsData.getDisk() != null && metricsData.getDisk().getAverage() > thresholds.getDiskHigh()) {
+        } else if (alarmName.contains("disk")) {
             actions.add(RemediationAction.builder()
                 .type(RemediationAction.ActionType.ALERT_CRITICAL)
                 .priority(RemediationAction.Priority.CRITICAL)
-                .reason(String.format("Disk utilization %.1f%% exceeds threshold %.1f%%", 
-                    metricsData.getDisk().getAverage(), thresholds.getDiskHigh()))
+                .reason("Disk space alarm: " + alarm.getName())
                 .alertLevel(RemediationAction.AlertLevel.CRITICAL)
                 .ruleName("disk-space-alert")
                 .build());
         }
         
-        // Apply custom remediation rules
-        actions.addAll(applyCustomRules(cluster, metrics));
+        // Emergency scaling based on individual alarm severity
+        String alarmSeverity = metricsAnalyzer.getAlarmSeverity(metrics);
+        if ("CRITICAL".equals(alarmSeverity) && cluster.canScale()) {
+            actions.add(RemediationAction.builder()
+                .type(RemediationAction.ActionType.EMERGENCY_SCALE)
+                .priority(RemediationAction.Priority.IMMEDIATE)
+                .reason("Critical alarm triggered: " + (metrics.getAlarms().get(0).getName()))
+                .targetNodes(Math.min(cluster.getSpec().getNodeCount() * 2, cluster.getMaxNodes()))
+                .ruleName("emergency-scale")
+                .build());
+        }
+        
+
+        
+        // Note: Custom rules removed - CloudWatch alarms provide sufficient triggering logic
         
         return actions;
     }
     
-    private boolean isUnderCombinedStress(OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        var thresholds = cluster.getSpec().getThresholds();
-        var metricsData = metrics.getMetrics();
-        
-        boolean highCpu = metricsData.getCpu() != null && 
-            metricsData.getCpu().getAverage() > thresholds.getCpuHigh() * 0.9;
-        boolean highMemory = metricsData.getMemory() != null && 
-            metricsData.getMemory().getAverage() > thresholds.getMemoryHigh() * 0.9;
-        boolean highLatency = metricsData.getSearchLatency() != null && 
-            metricsData.getSearchLatency().getP95() > thresholds.getLatencyHigh() * 1.5;
-        
-        // At least 2 out of 3 stress indicators
-        return (highCpu && highMemory) || (highCpu && highLatency) || (highMemory && highLatency);
-    }
+
     
-    private List<RemediationAction> applyCustomRules(OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        List<RemediationAction> actions = new ArrayList<>();
-        
-        if (cluster.getSpec().getRemediationRules() == null) {
-            return actions;
-        }
-        
-        for (var rule : cluster.getSpec().getRemediationRules()) {
-            if (evaluateRuleCondition(rule.getCondition(), cluster, metrics)) {
-                RemediationAction action = createActionFromRule(rule, cluster, metrics);
-                if (action != null) {
-                    actions.add(action);
-                }
-            }
-        }
-        
-        return actions;
-    }
-    
-    private boolean evaluateRuleCondition(String condition, OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        // Basic condition evaluator for custom remediation rules
-        try {
-            var metricsData = metrics.getMetrics();
-            var thresholds = cluster.getSpec().getThresholds();
-            
-            // Replace variables in condition
-            String evaluableCondition = condition
-                .replace("cpu", String.valueOf(metricsData.getCpu() != null ? metricsData.getCpu().getAverage() : 0))
-                .replace("memory", String.valueOf(metricsData.getMemory() != null ? metricsData.getMemory().getAverage() : 0))
-                .replace("latency_p95", String.valueOf(metricsData.getSearchLatency() != null ? metricsData.getSearchLatency().getP95() : 0))
-                .replace("queryRate", String.valueOf(metricsData.getQueryRate() != null ? metricsData.getQueryRate().getAverage() : 0))
-                .replace("nodeCount", String.valueOf(cluster.getSpec().getNodeCount()))
-                .replace("minNodes", String.valueOf(cluster.getMinNodes()));
-            
-            // Boolean expression evaluation for remediation rule conditions
-            return evaluateSimpleExpression(evaluableCondition);
-            
-        } catch (Exception e) {
-            log.warn("Failed to evaluate rule condition: {}", condition, e);
-            return false;
-        }
-    }
-    
-    private boolean evaluateSimpleExpression(String expression) {
-        // Basic expression evaluator for AND/OR conditions
-        try {
-            if (expression.contains(" AND ")) {
-                String[] parts = expression.split(" AND ");
-                return evaluateComparison(parts[0].trim()) && evaluateComparison(parts[1].trim());
-            } else if (expression.contains(" OR ")) {
-                String[] parts = expression.split(" OR ");
-                return evaluateComparison(parts[0].trim()) || evaluateComparison(parts[1].trim());
-            } else {
-                return evaluateComparison(expression.trim());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to evaluate expression: {}", expression, e);
-            return false;
-        }
-    }
-    
-    private boolean evaluateComparison(String comparison) {
-        if (comparison.contains(" > ")) {
-            String[] parts = comparison.split(" > ");
-            return Double.parseDouble(parts[0].trim()) > Double.parseDouble(parts[1].trim());
-        } else if (comparison.contains(" < ")) {
-            String[] parts = comparison.split(" < ");
-            return Double.parseDouble(parts[0].trim()) < Double.parseDouble(parts[1].trim());
-        }
-        return false;
-    }
-    
-    private RemediationAction createActionFromRule(OpenSearchCluster.RemediationRule rule, 
-                                                  OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        try {
-            RemediationAction.ActionType actionType = RemediationAction.ActionType.valueOf(rule.getAction().toUpperCase());
-            RemediationAction.Priority priority = rule.getPriority() != null ? 
-                RemediationAction.Priority.valueOf(rule.getPriority().toUpperCase()) : RemediationAction.Priority.MEDIUM;
-            
-            return RemediationAction.builder()
-                .type(actionType)
-                .priority(priority)
-                .reason("Custom rule: " + rule.getName())
-                .ruleName(rule.getName())
-                .build();
-        } catch (Exception e) {
-            log.warn("Failed to create action from rule: {}", rule.getName(), e);
-            return null;
-        }
-    }
+
     
     private List<RemediationAction> filterByCooldown(OpenSearchCluster cluster, List<RemediationAction> actions) {
         return actions.stream()
@@ -516,22 +382,17 @@ public class OpenSearchClusterController {
     }
     
     private void updateClusterMetrics(OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        var metricsData = metrics.getMetrics();
-        
-        var currentMetrics = OpenSearchCluster.CurrentMetrics.builder()
-            .cpu(metricsData.getCpu() != null ? metricsData.getCpu().getAverage() : null)
-            .memory(metricsData.getMemory() != null ? metricsData.getMemory().getAverage() : null)
-            .disk(metricsData.getDisk() != null ? metricsData.getDisk().getAverage() : null)
-            .latency(metricsData.getSearchLatency() != null ? metricsData.getSearchLatency().getP95() : null)
-            .queryRate(metricsData.getQueryRate() != null ? metricsData.getQueryRate().getAverage() : null)
-            .lastUpdated(LocalDateTime.now())
-            .build();
+        // Store alarm information instead of assuming multiple metrics
+        var alarm = metrics.getAlarms().get(0);
+        String lastAlarmInfo = String.format("%s: %s (%s)", 
+            alarm.getName(), alarm.getState(), alarm.getReason());
         
         if (cluster.getStatus() == null) {
             cluster.setStatus(OpenSearchCluster.ClusterStatus.builder().build());
         }
         
-        cluster.getStatus().setCurrentMetrics(currentMetrics);
+        // Update last alarm information instead of detailed metrics
+        cluster.getStatus().setLastAlarmInfo(lastAlarmInfo);
         cluster.getStatus().setLastUpdated(LocalDateTime.now());
     }
     
@@ -558,24 +419,9 @@ public class OpenSearchClusterController {
     
 
     
-    private int calculateScaleOutNodes(OpenSearchCluster cluster, double currentValue, double threshold) {
-        int currentNodes = cluster.getSpec().getNodeCount();
-        // Scale by 1-2 nodes based on how much over threshold
-        double overage = (currentValue - threshold) / threshold;
-        int additionalNodes = overage > 0.5 ? 2 : 1;
-        return Math.min(currentNodes + additionalNodes, cluster.getMaxNodes());
-    }
+
     
-    private int calculateScaleInNodes(OpenSearchCluster cluster, double currentValue, double threshold) {
-        int currentNodes = cluster.getSpec().getNodeCount();
-        // Scale down by 1 node if significantly under threshold
-        double underage = (threshold - currentValue) / threshold;
-        return underage > 0.3 ? Math.max(currentNodes - 1, cluster.getMinNodes()) : currentNodes;
-    }
+
     
-    private boolean canScaleIn(OpenSearchCluster cluster) {
-        return cluster.isAutoScalingEnabled() && 
-               cluster.getSpec().getNodeCount() > cluster.getMinNodes() &&
-               cluster.isReady();
-    }
+
 } 

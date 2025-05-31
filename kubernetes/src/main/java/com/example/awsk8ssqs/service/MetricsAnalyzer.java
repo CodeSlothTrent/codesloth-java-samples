@@ -17,127 +17,63 @@ public class MetricsAnalyzer {
     private final Map<String, Map<LocalDateTime, CloudWatchMetrics>> metricsHistory = new ConcurrentHashMap<>();
     
     /**
-     * Store metrics for trend analysis
+     * Store metrics for historical comparison and debugging
+     * Note: Not used for trend analysis since CloudWatch alarms handle that
      */
     public void storeMetrics(String clusterName, CloudWatchMetrics metrics) {
         metricsHistory.computeIfAbsent(clusterName, k -> new ConcurrentHashMap<>())
                      .put(LocalDateTime.now(), metrics);
         
-        // Keep only recent metrics (last 2 hours)
+        // Keep only recent metrics (last 2 hours) for comparison and debugging
         cleanOldMetrics(clusterName);
     }
     
+
+    
     /**
-     * Analyze if metrics show an upward trend
+     * Check if the single CloudWatch alarm indicates stress
+     * Note: Each SQS message typically contains one alarm state transition
      */
-    public boolean isUpwardTrend(String clusterName, String metricType) {
-        Map<LocalDateTime, CloudWatchMetrics> clusterHistory = metricsHistory.get(clusterName);
-        if (clusterHistory == null || clusterHistory.size() < 3) {
-            return false; // Need at least 3 data points
-        }
-        
-        // Get last 3 metrics
-        var recentMetrics = clusterHistory.entrySet().stream()
-            .sorted(Map.Entry.<LocalDateTime, CloudWatchMetrics>comparingByKey().reversed())
-            .limit(3)
-            .toList();
-        
-        if (recentMetrics.size() < 3) {
+    public boolean isUnderStress(CloudWatchMetrics metrics) {
+        // Since each message represents one alarm, check if this specific alarm indicates stress
+        if (metrics.getAlarms() == null || metrics.getAlarms().isEmpty()) {
             return false;
         }
         
-        // Check if metric is trending upward
-        double[] values = new double[3];
-        for (int i = 0; i < 3; i++) {
-            values[i] = extractMetricValue(recentMetrics.get(i).getValue(), metricType);
-        }
-        
-        // Trend analysis: check if values are consistently increasing
-        return values[0] > values[1] && values[1] > values[2];
+        // Get the primary alarm (should be only one per message)
+        var alarm = metrics.getAlarms().get(0);
+        return "ALARM".equals(alarm.getState()) && 
+               (alarm.getName().toLowerCase().contains("critical") || 
+                alarm.getName().toLowerCase().contains("high"));
     }
     
     /**
-     * Check if metrics indicate cluster is under stress
+     * Get alarm severity for the single alarm in this message
+     * Note: Each SQS message represents one alarm state transition
      */
-    public boolean isUnderStress(CloudWatchMetrics metrics) {
-        var metricsData = metrics.getMetrics();
-        int stressIndicators = 0;
-        
-        // CPU stress
-        if (metricsData.getCpu() != null && metricsData.getCpu().getAverage() > 75) {
-            stressIndicators++;
+    public String getAlarmSeverity(CloudWatchMetrics metrics) {
+        if (metrics.getAlarms() == null || metrics.getAlarms().isEmpty()) {
+            return "NONE";
         }
         
-        // Memory stress
-        if (metricsData.getMemory() != null && metricsData.getMemory().getAverage() > 80) {
-            stressIndicators++;
+        // Get the primary alarm (should be only one per message)
+        var alarm = metrics.getAlarms().get(0);
+        
+        if (!"ALARM".equals(alarm.getState())) {
+            return "OK"; // Alarm is not active
         }
         
-        // Latency stress
-        if (metricsData.getSearchLatency() != null && metricsData.getSearchLatency().getP95() > 500) {
-            stressIndicators++;
+        // Determine severity from alarm name
+        String alarmName = alarm.getName().toLowerCase();
+        if (alarmName.contains("critical")) {
+            return "CRITICAL";
+        } else if (alarmName.contains("high") || alarmName.contains("error")) {
+            return "HIGH";
+        } else if (alarmName.contains("warning")) {
+            return "WARNING";
+        } else {
+            return "MEDIUM";
         }
-        
-        // Disk stress
-        if (metricsData.getDisk() != null && metricsData.getDisk().getAverage() > 85) {
-            stressIndicators++;
-        }
-        
-        // Error rate stress
-        if (metricsData.getErrorRate() != null && metricsData.getErrorRate().getAverage() > 2.0) {
-            stressIndicators++;
-        }
-        
-        // Under stress if 2 or more indicators
-        return stressIndicators >= 2;
-    }
-    
-    /**
-     * Calculate composite health score based on multiple metrics
-     */
-    public double calculateHealthScore(CloudWatchMetrics metrics) {
-        var metricsData = metrics.getMetrics();
-        double score = 100.0;
-        
-        // CPU impact (max 25 points)
-        if (metricsData.getCpu() != null) {
-            double cpuUsage = metricsData.getCpu().getAverage();
-            if (cpuUsage > 50) {
-                score -= Math.min(25, (cpuUsage - 50) / 50 * 25);
-            }
-        }
-        
-        // Memory impact (max 25 points)
-        if (metricsData.getMemory() != null) {
-            double memoryUsage = metricsData.getMemory().getAverage();
-            if (memoryUsage > 60) {
-                score -= Math.min(25, (memoryUsage - 60) / 40 * 25);
-            }
-        }
-        
-        // Latency impact (max 25 points)
-        if (metricsData.getSearchLatency() != null) {
-            double latency = metricsData.getSearchLatency().getP95();
-            if (latency > 100) {
-                score -= Math.min(25, (latency - 100) / 400 * 25);
-            }
-        }
-        
-        // Disk impact (max 15 points)
-        if (metricsData.getDisk() != null) {
-            double diskUsage = metricsData.getDisk().getAverage();
-            if (diskUsage > 70) {
-                score -= Math.min(15, (diskUsage - 70) / 30 * 15);
-            }
-        }
-        
-        // Error rate impact (max 10 points)
-        if (metricsData.getErrorRate() != null) {
-            double errorRate = metricsData.getErrorRate().getAverage();
-            score -= Math.min(10, errorRate * 2);
-        }
-        
-        return Math.max(0, score);
     }
     
     /**
@@ -191,43 +127,18 @@ public class MetricsAnalyzer {
     }
     
     /**
-     * Detect anomalies in metrics
+     * Check if this specific CloudWatch alarm indicates anomalous behavior
+     * Note: Each message contains one alarm - check if it's an anomaly detector alarm
      */
     public boolean hasAnomalies(String clusterName, CloudWatchMetrics metrics) {
-        Map<LocalDateTime, CloudWatchMetrics> clusterHistory = metricsHistory.get(clusterName);
-        if (clusterHistory == null || clusterHistory.size() < 5) {
-            return false; // Need historical data for anomaly detection
+        if (metrics.getAlarms() == null || metrics.getAlarms().isEmpty()) {
+            return false;
         }
         
-        // Anomaly detection: identify values that deviate significantly from historical average
-        var recentMetrics = clusterHistory.values().stream()
-            .limit(10) // Last 10 measurements
-            .toList();
-            
-        // Calculate averages
-        double avgCpu = recentMetrics.stream()
-            .mapToDouble(m -> m.getMetrics().getCpu() != null ? m.getMetrics().getCpu().getAverage() : 0)
-            .average().orElse(0);
-            
-        double avgMemory = recentMetrics.stream()
-            .mapToDouble(m -> m.getMetrics().getMemory() != null ? m.getMetrics().getMemory().getAverage() : 0)
-            .average().orElse(0);
-            
-        double avgLatency = recentMetrics.stream()
-            .mapToDouble(m -> m.getMetrics().getSearchLatency() != null ? m.getMetrics().getSearchLatency().getP95() : 0)
-            .average().orElse(0);
-        
-        // Check for anomalies (more than 50% deviation from average)
-        boolean cpuAnomaly = metrics.getMetrics().getCpu() != null && 
-            Math.abs(metrics.getMetrics().getCpu().getAverage() - avgCpu) > avgCpu * 0.5;
-            
-        boolean memoryAnomaly = metrics.getMetrics().getMemory() != null && 
-            Math.abs(metrics.getMetrics().getMemory().getAverage() - avgMemory) > avgMemory * 0.5;
-            
-        boolean latencyAnomaly = metrics.getMetrics().getSearchLatency() != null && 
-            Math.abs(metrics.getMetrics().getSearchLatency().getP95() - avgLatency) > avgLatency * 0.5;
-        
-        return cpuAnomaly || memoryAnomaly || latencyAnomaly;
+        // Check the single alarm in this message
+        var alarm = metrics.getAlarms().get(0);
+        return alarm.getName().toLowerCase().contains("anomaly") ||
+               "ANOMALY_DETECTOR".equals(alarm.getComparisonOperator());
     }
     
     /**
@@ -274,21 +185,7 @@ public class MetricsAnalyzer {
         return analysis;
     }
     
-    /**
-     * Extract specific metric value from CloudWatch metrics
-     */
-    private double extractMetricValue(CloudWatchMetrics metrics, String metricType) {
-        var metricsData = metrics.getMetrics();
-        
-        return switch (metricType.toLowerCase()) {
-            case "cpu" -> metricsData.getCpu() != null ? metricsData.getCpu().getAverage() : 0;
-            case "memory" -> metricsData.getMemory() != null ? metricsData.getMemory().getAverage() : 0;
-            case "latency" -> metricsData.getSearchLatency() != null ? metricsData.getSearchLatency().getP95() : 0;
-            case "disk" -> metricsData.getDisk() != null ? metricsData.getDisk().getAverage() : 0;
-            case "queryrate" -> metricsData.getQueryRate() != null ? metricsData.getQueryRate().getAverage() : 0;
-            default -> 0;
-        };
-    }
+
     
     /**
      * Clean old metrics to prevent memory leaks

@@ -18,6 +18,36 @@ This project demonstrates an **advanced Kubernetes controller pattern** that aut
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
 ```
 
+## ⚡ Kubernetes API Integration
+
+This controller uses **real Kubernetes API** and **etcd** for cluster state management instead of simple in-memory storage:
+
+### **Production-Grade Storage**
+```java
+// ❌ Old: Simple HashMap (demo only)
+private final Map<String, OpenSearchCluster> clusters = new HashMap<>();
+
+// ✅ New: Kubernetes API + etcd (production ready)
+private final KubernetesClusterService kubernetesClusterService;
+```
+
+### **How It Works**
+1. **CloudWatch metrics** arrive via SQS
+2. **Controller queries Kubernetes API** for cluster definitions
+3. **API Server reads from etcd** (distributed database)
+4. **Controller analyzes metrics** and plans remediation
+5. **Updates stored back to etcd** via Kubernetes API
+
+### **Benefits**
+- ✅ **Persistent storage** (survives restarts)
+- ✅ **Multiple controllers** can share same state
+- ✅ **High availability** with etcd clustering
+- ✅ **Full audit trail** of all changes
+- ✅ **RBAC integration** for security
+- ✅ **Real-time notifications** via Kubernetes Watch API
+
+📚 **Learn more**: See [KUBERNETES_API_INTEGRATION.md](KUBERNETES_API_INTEGRATION.md) for detailed explanation.
+
 ## 🚀 Key Features
 
 ### **Intelligent Auto-Scaling**
@@ -67,23 +97,36 @@ kubernetes/
 
 ## 🛠️ Quick Start
 
-### 1. **Deploy the Controller**
+### 1. **Setup Kubernetes API Integration** ⭐
+```bash
+# Windows PowerShell
+cd kubernetes
+.\scripts\setup-kubernetes-local.ps1
+
+# This will:
+# - Verify kubectl and Kubernetes cluster access
+# - Apply the OpenSearchCluster Custom Resource Definition (CRD)
+# - Test cluster resource creation/deletion
+# - Verify RBAC permissions
+```
+
+### 2. **Deploy the Controller**
 ```bash
 cd kubernetes
 chmod +x scripts/setup-demo.sh
 ./scripts/setup-demo.sh
 ```
 
-### 2. **Create OpenSearch Cluster Definitions**
+### 3. **Create OpenSearch Cluster Definitions**
 ```bash
-# Apply the Custom Resource Definition
+# Apply the Custom Resource Definition (if not done above)
 kubectl apply -f k8s/elasticsearch-cluster-crd.yaml
 
 # Create production cluster with auto-scaling
 kubectl apply -f k8s/elasticsearch-cluster-example.yaml
 ```
 
-### 3. **Send CloudWatch Metrics**
+### 4. **Send CloudWatch Metrics**
 ```bash
 # Example high CPU metrics triggering scale-out
 awslocal sqs send-message --queue-url http://localhost:4566/000000000000/cluster-metrics --message-body '{

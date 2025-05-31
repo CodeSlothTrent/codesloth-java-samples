@@ -61,6 +61,15 @@ management:
 server:
   port: 8080
 
+# Kubernetes Configuration
+kubernetes:
+  config:
+    # Set to true when running inside a Kubernetes pod
+    in-cluster: false
+    # Path to kubeconfig file (leave empty to use default ~/.kube/config)
+    kubeconfig-path: 
+  namespace: default
+
 ---
 # Production Profile
 spring:

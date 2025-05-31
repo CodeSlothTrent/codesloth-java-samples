@@ -13,9 +13,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Component
@@ -30,8 +28,8 @@ public class OpenSearchClusterController {
     private final MetricsAnalyzer metricsAnalyzer;
     private final CooldownManager cooldownManager;
     
-    // In-memory store for cluster definitions (in production, this would be Kubernetes API)
-    private final Map<String, OpenSearchCluster> clusters = new HashMap<>();
+    // Kubernetes API service for managing cluster definitions in etcd via API server
+    private final KubernetesClusterService kubernetesClusterService;
     
     @SqsListener("${aws.sqs.metrics-queue}")
     public void processCloudWatchMetrics(@Payload String message) {
@@ -39,12 +37,12 @@ public class OpenSearchClusterController {
             CloudWatchMetrics metrics = objectMapper.readValue(message, CloudWatchMetrics.class);
             log.info("Processing CloudWatch metrics for cluster: {}", metrics.getClusterName());
             
-            // Get the cluster definition
-            OpenSearchCluster cluster = getClusterByName(metrics.getClusterName());
+            // Get the cluster definition from Kubernetes API
+            OpenSearchCluster cluster = kubernetesClusterService.getClusterByName(metrics.getClusterName());
             if (cluster == null) {
                 log.warn("No OpenSearchCluster found for: {}. Creating default cluster definition.", 
                     metrics.getClusterName());
-                cluster = createDefaultClusterDefinition(metrics.getClusterName());
+                cluster = kubernetesClusterService.createDefaultClusterDefinition(metrics.getClusterName());
             }
             
             // Update cluster metrics
@@ -59,7 +57,7 @@ public class OpenSearchClusterController {
             // Execute actions in priority order
             executeRemediationActions(cluster, executableActions, metrics);
             
-            // Update cluster status
+            // Update cluster status in Kubernetes API
             updateClusterStatus(cluster, metrics, executableActions);
             
         } catch (Exception e) {
@@ -452,8 +450,8 @@ public class OpenSearchClusterController {
                         .build())
                     .build();
                 
-                // Store new cluster
-                clusters.put(newClusterName, newCluster);
+                // Store new cluster in Kubernetes API
+                kubernetesClusterService.createOrUpdateCluster(newCluster);
                 
                 // Send alert about new cluster creation
                 alertService.sendAlert(
@@ -553,49 +551,12 @@ public class OpenSearchClusterController {
         if (lastAction != null) {
             cluster.getStatus().setLastAction(lastAction);
         }
-    }
-    
-    private OpenSearchCluster getClusterByName(String clusterName) {
-        return clusters.get(clusterName);
-    }
-    
-    private OpenSearchCluster createDefaultClusterDefinition(String clusterName) {
-        var cluster = OpenSearchCluster.builder()
-            .metadata(OpenSearchCluster.ObjectMeta.builder()
-                .name(clusterName)
-                .namespace("default")
-                .creationTimestamp(LocalDateTime.now())
-                .build())
-            .spec(OpenSearchCluster.ClusterSpec.builder()
-                .clusterName(clusterName)
-                .nodeCount(3)
-                .version("OpenSearch_2.11")
-                .instanceType("m6g.large.search")
-                .thresholds(OpenSearchCluster.ClusterThresholds.builder()
-                    .cpuHigh(80.0)
-                    .cpuLow(30.0)
-                    .memoryHigh(85.0)
-                    .memoryLow(40.0)
-                    .diskHigh(90.0)
-                    .latencyHigh(200.0)
-                    .queryRateHigh(100.0)
-                    .build())
-                .autoScaling(OpenSearchCluster.AutoScalingConfig.builder()
-                    .enabled(true)
-                    .minNodes(2)
-                    .maxNodes(10)
-                    .cooldownPeriod("10m")
-                    .build())
-                .build())
-            .status(OpenSearchCluster.ClusterStatus.builder()
-                .phase(OpenSearchCluster.ClusterPhase.READY)
-                .nodeCount(3)
-                .build())
-            .build();
         
-        clusters.put(clusterName, cluster);
-        return cluster;
+        // Update cluster status in Kubernetes API (etcd via API server)
+        kubernetesClusterService.updateClusterStatus(cluster);
     }
+    
+
     
     private int calculateScaleOutNodes(OpenSearchCluster cluster, double currentValue, double threshold) {
         int currentNodes = cluster.getSpec().getNodeCount();

@@ -10,17 +10,21 @@ import java.util.List;
 import java.util.Map;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class OpenSearchCluster {
+    
+    // Kubernetes API fields
+    private String apiVersion;
+    private String kind;
     
     private ObjectMeta metadata;
     private ClusterSpec spec;
     private ClusterStatus status;
     
     @Data
-    @Builder
+    @Builder(toBuilder = true)
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ObjectMeta {
@@ -32,7 +36,7 @@ public class OpenSearchCluster {
     }
     
     @Data
-    @Builder
+    @Builder(toBuilder = true)
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ClusterSpec {

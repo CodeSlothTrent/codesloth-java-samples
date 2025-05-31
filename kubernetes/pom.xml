@@ -20,6 +20,7 @@
         <spring.boot.version>3.2.0</spring.boot.version>
         <spring.cloud.aws.version>3.0.3</spring.cloud.aws.version>
         <aws.sdk.version>2.21.29</aws.sdk.version>
+        <kubernetes.client.version>19.0.0</kubernetes.client.version>
 
         <testcontainers.version>1.19.3</testcontainers.version>
     </properties>
@@ -85,7 +86,17 @@
             <artifactId>sts</artifactId>
         </dependency>
 
-
+        <!-- Kubernetes Java Client -->
+        <dependency>
+            <groupId>io.kubernetes</groupId>
+            <artifactId>client-java</artifactId>
+            <version>${kubernetes.client.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.kubernetes</groupId>
+            <artifactId>client-java-extended</artifactId>
+            <version>${kubernetes.client.version}</version>
+        </dependency>
 
         <!-- JSON Processing -->
         <dependency>

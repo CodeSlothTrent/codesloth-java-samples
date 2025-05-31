@@ -48,144 +48,128 @@ public class OpenSearchClusterController {
             // Update cluster metrics
             updateClusterMetrics(cluster, metrics);
             
-            // Analyze metrics and determine remediation actions
-            List<RemediationAction> actions = analyzeAndPlanRemediation(cluster, metrics);
+            // Analyze single alarm and determine remediation action
+            RemediationAction action = analyzeAndPlanRemediation(cluster, metrics);
             
-            // Filter actions by cooldown periods
-            List<RemediationAction> executableActions = filterByCooldown(cluster, actions);
-            
-            // Execute actions in priority order
-            executeRemediationActions(cluster, executableActions, metrics);
+            // Check cooldown and execute if allowed
+            if (action != null && cooldownManager.canExecuteAction(cluster.getMetadata().getName(), action.getRuleName())) {
+                executeRemediationAction(cluster, action, metrics);
+            }
             
             // Update cluster status in Kubernetes API
-            updateClusterStatus(cluster, metrics, executableActions);
+            updateClusterStatus(cluster, metrics, action);
             
         } catch (Exception e) {
             log.error("Error processing CloudWatch metrics: {}", e.getMessage(), e);
         }
     }
     
-    private List<RemediationAction> analyzeAndPlanRemediation(OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        List<RemediationAction> actions = new ArrayList<>();
-        
-        if (cluster.getSpec() == null || cluster.getSpec().getThresholds() == null) {
-            log.warn("No thresholds configured for cluster: {}", cluster.getMetadata().getName());
-            return actions;
+    private RemediationAction analyzeAndPlanRemediation(OpenSearchCluster cluster, CloudWatchMetrics metrics) {
+        if (cluster.getSpec() == null) {
+            log.warn("No cluster spec configured for: {}", cluster.getMetadata().getName());
+            return null;
         }
         
-        var thresholds = cluster.getSpec().getThresholds();
-        var metricsData = metrics.getMetrics();
-        
-        // Simplified alarm-based remediation - CloudWatch already validated thresholds
-        String alarmSeverity = metricsAnalyzer.getAlarmSeverity(metrics);
+        // Get the single alarm from this message
         var alarm = metrics.getAlarms().get(0);
         String alarmName = alarm.getName().toLowerCase();
+        String alarmSeverity = metricsAnalyzer.getAlarmSeverity(metrics);
         
-        // Determine action based on alarm type and severity
+        // Determine single action based on alarm type and severity
         if (alarmName.contains("cpu") || alarmName.contains("memory")) {
-            if (cluster.canScale()) {
-                actions.add(RemediationAction.builder()
+            if (!cluster.canScale()) {
+                return null; // Cannot take action
+            }
+            
+            // For critical alarms, use emergency scaling (double nodes)
+            if ("CRITICAL".equals(alarmSeverity)) {
+                return RemediationAction.builder()
+                    .type(RemediationAction.ActionType.EMERGENCY_SCALE)
+                    .priority(RemediationAction.Priority.IMMEDIATE)
+                    .reason("Critical " + (alarmName.contains("cpu") ? "CPU" : "Memory") + " alarm: " + alarm.getName())
+                    .targetNodes(Math.min(cluster.getSpec().getNodeCount() * 2, cluster.getMaxNodes()))
+                    .ruleName("emergency-scale")
+                    .build();
+            } else {
+                return RemediationAction.builder()
                     .type(RemediationAction.ActionType.SCALE_OUT)
-                    .priority("CRITICAL".equals(alarmSeverity) ? RemediationAction.Priority.CRITICAL : RemediationAction.Priority.HIGH)
+                    .priority(RemediationAction.Priority.HIGH)
                     .reason("CloudWatch alarm: " + alarm.getName())
                     .targetNodes(cluster.getSpec().getNodeCount() + 1)
                     .ruleName(alarmName.contains("cpu") ? "cpu-alarm-scale-out" : "memory-alarm-scale-out")
-                    .build());
+                    .build();
             }
+            
         } else if (alarmName.contains("latency")) {
             if ("CRITICAL".equals(alarmSeverity)) {
-                actions.add(RemediationAction.builder()
+                return RemediationAction.builder()
                     .type(RemediationAction.ActionType.CREATE_NEW_CLUSTER)
                     .priority(RemediationAction.Priority.CRITICAL)
                     .reason("Critical latency alarm: " + alarm.getName())
                     .ruleName("critical-latency-alarm-new-cluster")
-                    .build());
+                    .build();
             } else if (cluster.canScale()) {
-                actions.add(RemediationAction.builder()
+                return RemediationAction.builder()
                     .type(RemediationAction.ActionType.SCALE_OUT)
                     .priority(RemediationAction.Priority.HIGH)
                     .reason("Latency alarm: " + alarm.getName())
                     .targetNodes(cluster.getSpec().getNodeCount() + 1)
                     .ruleName("latency-alarm-scale-out")
-                    .build());
+                    .build();
             } else {
-                actions.add(RemediationAction.builder()
+                return RemediationAction.builder()
                     .type(RemediationAction.ActionType.OPTIMIZE_CLUSTER)
                     .priority(RemediationAction.Priority.MEDIUM)
                     .reason("Latency alarm but cannot scale: " + alarm.getName())
                     .optimizations(List.of("refresh_interval", "merge_policy", "index_settings"))
                     .ruleName("latency-alarm-optimization")
-                    .build());
+                    .build();
             }
+            
         } else if (alarmName.contains("disk")) {
-            actions.add(RemediationAction.builder()
+            return RemediationAction.builder()
                 .type(RemediationAction.ActionType.ALERT_CRITICAL)
                 .priority(RemediationAction.Priority.CRITICAL)
                 .reason("Disk space alarm: " + alarm.getName())
                 .alertLevel(RemediationAction.AlertLevel.CRITICAL)
                 .ruleName("disk-space-alert")
-                .build());
+                .build();
         }
         
-        // Emergency scaling based on individual alarm severity
-        String alarmSeverity = metricsAnalyzer.getAlarmSeverity(metrics);
-        if ("CRITICAL".equals(alarmSeverity) && cluster.canScale()) {
-            actions.add(RemediationAction.builder()
-                .type(RemediationAction.ActionType.EMERGENCY_SCALE)
-                .priority(RemediationAction.Priority.IMMEDIATE)
-                .reason("Critical alarm triggered: " + (metrics.getAlarms().get(0).getName()))
-                .targetNodes(Math.min(cluster.getSpec().getNodeCount() * 2, cluster.getMaxNodes()))
-                .ruleName("emergency-scale")
-                .build());
-        }
-        
-
-        
-        // Note: Custom rules removed - CloudWatch alarms provide sufficient triggering logic
-        
-        return actions;
+        // Unknown alarm type
+        log.warn("Unknown alarm type for cluster {}: {}", cluster.getMetadata().getName(), alarm.getName());
+        return null;
     }
     
 
     
 
     
-    private List<RemediationAction> filterByCooldown(OpenSearchCluster cluster, List<RemediationAction> actions) {
-        return actions.stream()
-            .filter(action -> cooldownManager.canExecuteAction(cluster.getMetadata().getName(), action.getRuleName()))
-            .toList();
-    }
-    
-    private void executeRemediationActions(OpenSearchCluster cluster, List<RemediationAction> actions, CloudWatchMetrics metrics) {
-        // Sort by priority
-        actions.stream()
-            .sorted((a, b) -> Integer.compare(a.getPriority().getLevel(), b.getPriority().getLevel()))
-            .forEach(action -> {
-                try {
-                    log.info("Executing remediation action: {} for cluster: {}", 
-                        action.getType(), cluster.getMetadata().getName());
-                    
-                    CompletableFuture<Boolean> future = executeAction(cluster, action, metrics);
-                    
-                    // For critical actions, wait for completion
-                    if (action.isHighPriority()) {
-                        boolean success = future.get();
-                        action.setSuccess(success);
-                        action.setExecuted(true);
-                        action.setExecutedTime(LocalDateTime.now());
-                        
-                        if (success) {
-                            cooldownManager.recordAction(cluster.getMetadata().getName(), action.getRuleName());
-                        }
-                    }
-                    
-                } catch (Exception e) {
-                    log.error("Failed to execute action: {} for cluster: {}", 
-                        action.getType(), cluster.getMetadata().getName(), e);
-                    action.setSuccess(false);
-                    action.setErrorMessage(e.getMessage());
+    private void executeRemediationAction(OpenSearchCluster cluster, RemediationAction action, CloudWatchMetrics metrics) {
+        try {
+            log.info("Executing remediation action: {} for cluster: {}", 
+                action.getType(), cluster.getMetadata().getName());
+            
+            CompletableFuture<Boolean> future = executeAction(cluster, action, metrics);
+            
+            // For critical actions, wait for completion
+            if (action.isHighPriority()) {
+                boolean success = future.get();
+                action.setSuccess(success);
+                action.setExecuted(true);
+                action.setExecutedTime(LocalDateTime.now());
+                
+                if (success) {
+                    cooldownManager.recordAction(cluster.getMetadata().getName(), action.getRuleName());
                 }
-            });
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to execute action: {} for cluster: {}", 
+                action.getType(), cluster.getMetadata().getName(), e);
+            action.setSuccess(false);
+            action.setErrorMessage(e.getMessage());
+        }
     }
     
     private CompletableFuture<Boolean> executeAction(OpenSearchCluster cluster, RemediationAction action, CloudWatchMetrics metrics) {
@@ -396,20 +380,16 @@ public class OpenSearchClusterController {
         cluster.getStatus().setLastUpdated(LocalDateTime.now());
     }
     
-    private void updateClusterStatus(OpenSearchCluster cluster, CloudWatchMetrics metrics, List<RemediationAction> actions) {
-        var lastAction = actions.stream()
-            .filter(RemediationAction::isExecuted)
-            .findFirst()
-            .map(action -> OpenSearchCluster.LastAction.builder()
+    private void updateClusterStatus(OpenSearchCluster cluster, CloudWatchMetrics metrics, RemediationAction action) {
+        if (action != null && action.isExecuted()) {
+            var lastAction = OpenSearchCluster.LastAction.builder()
                 .type(action.getType().name())
                 .reason(action.getReason())
                 .timestamp(action.getExecutedTime())
                 .success(action.isSuccess())
                 .message(action.getErrorMessage())
-                .build())
-            .orElse(null);
-        
-        if (lastAction != null) {
+                .build();
+            
             cluster.getStatus().setLastAction(lastAction);
         }
         

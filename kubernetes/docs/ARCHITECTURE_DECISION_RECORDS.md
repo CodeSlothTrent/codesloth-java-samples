@@ -106,3 +106,39 @@ Systematically remove all redundant threshold checking and multi-metric correlat
 - ✅ **Clearer Logic**: Simple alarm type → action mapping
 - ✅ **No Threshold Duplication**: CloudWatch is authoritative source
 - ❌ **Less Customization**: Removed custom rule engine (but CloudWatch provides this) 
+
+---
+
+## ADR-005: Single Action Per Message Instead of Action Lists
+
+**Status**: Accepted
+
+**Context**: 
+The architecture still assumed multiple actions per message by using `List<RemediationAction>` return types and complex action filtering/sorting logic, violating the single-alarm-per-message principle.
+
+**Decision**: 
+Convert all action processing from lists to single actions, matching the one-alarm-per-message reality.
+
+**Rationale**:
+- **One Alarm = One Action**: Each SQS message contains one alarm, which should trigger one specific action
+- **No Action Lists**: Cannot have multiple actions from a single alarm state transition
+- **Simplified Execution**: No need for priority sorting or filtering when there's only one action
+
+**Changes Made**:
+- `analyzeAndPlanRemediation()`: Returns `RemediationAction` instead of `List<RemediationAction>`
+- **Removed**: `filterByCooldown()` method - cooldown check moved inline
+- **Removed**: `executeRemediationActions()` method - replaced with `executeRemediationAction()`
+- `updateClusterStatus()`: Takes single action instead of action list
+- **Removed**: Duplicate emergency scaling logic (now integrated into CPU/Memory handling)
+
+**Simplified Flow**:
+```
+SQS Message → Single Alarm → Single Action → Execute → Update Status
+```
+
+**Impact**:
+- ✅ **Perfect Architectural Alignment**: Code exactly matches CloudWatch behavior
+- ✅ **Eliminated Complexity**: No more list processing for inherently single operations
+- ✅ **Cleaner Logic**: Direct alarm → action → execution flow
+- ✅ **No Redundant Processing**: One decision path per message
+- ❌ **No Batch Operations**: But these were impossible anyway with single-alarm messages 

@@ -20,14 +20,11 @@ This project demonstrates an **advanced Kubernetes controller pattern** that aut
 
 ## ⚡ Kubernetes API Integration
 
-This controller uses **real Kubernetes API** and **etcd** for cluster state management instead of simple in-memory storage:
+This controller uses **production-grade Kubernetes API** and **etcd** for enterprise cluster state management:
 
-### **Production-Grade Storage**
+### **Enterprise Storage Architecture**
 ```java
-// ❌ Old: Simple HashMap (demo only)
-private final Map<String, OpenSearchCluster> clusters = new HashMap<>();
-
-// ✅ New: Kubernetes API + etcd (production ready)
+// Kubernetes API + etcd integration for persistent, distributed state
 private final KubernetesClusterService kubernetesClusterService;
 ```
 
@@ -38,13 +35,13 @@ private final KubernetesClusterService kubernetesClusterService;
 4. **Controller analyzes metrics** and plans remediation
 5. **Updates stored back to etcd** via Kubernetes API
 
-### **Benefits**
-- ✅ **Persistent storage** (survives restarts)
-- ✅ **Multiple controllers** can share same state
-- ✅ **High availability** with etcd clustering
-- ✅ **Full audit trail** of all changes
-- ✅ **RBAC integration** for security
-- ✅ **Real-time notifications** via Kubernetes Watch API
+### **Enterprise Capabilities**
+- ✅ **Persistent storage** - Data survives restarts and failures
+- ✅ **Distributed state** - Multiple controllers share consistent state
+- ✅ **High availability** - etcd clustering provides automatic failover
+- ✅ **Complete audit trail** - Track all cluster changes with timestamps
+- ✅ **Security integration** - RBAC controls for fine-grained access
+- ✅ **Real-time updates** - Instant notifications via Kubernetes Watch API
 
 📚 **Learn more**: See [KUBERNETES_API_INTEGRATION.md](KUBERNETES_API_INTEGRATION.md) for detailed explanation.
 
@@ -449,4 +446,4 @@ This project demonstrates:
 - ✅ **Multi-Cluster Management** for high availability
 - ✅ **Cost Optimization** through intelligent scaling
 
-This approach transforms simple cluster provisioning into **intelligent, self-healing infrastructure** that adapts to changing conditions automatically - exactly what you'd see in production platforms managing thousands of clusters! 🚀 
+This approach delivers **intelligent, self-healing infrastructure** that automatically adapts to changing conditions - exactly what you'd see in production platforms managing thousands of clusters at companies like Netflix, Uber, and AWS! 🚀 

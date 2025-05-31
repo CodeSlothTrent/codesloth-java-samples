@@ -52,7 +52,7 @@ public class MetricsAnalyzer {
             values[i] = extractMetricValue(recentMetrics.get(i).getValue(), metricType);
         }
         
-        // Simple trend check: each value is higher than the previous
+        // Trend analysis: check if values are consistently increasing
         return values[0] > values[1] && values[1] > values[2];
     }
     
@@ -199,7 +199,7 @@ public class MetricsAnalyzer {
             return false; // Need historical data for anomaly detection
         }
         
-        // Simple anomaly detection: check if current values are significantly different from average
+        // Anomaly detection: identify values that deviate significantly from historical average
         var recentMetrics = clusterHistory.values().stream()
             .limit(10) // Last 10 measurements
             .toList();

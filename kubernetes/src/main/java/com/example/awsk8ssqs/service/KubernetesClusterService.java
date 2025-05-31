@@ -15,7 +15,7 @@ import java.util.*;
 
 /**
  * Service for managing OpenSearchCluster custom resources through the Kubernetes API
- * This replaces the simple in-memory HashMap with real Kubernetes API integration
+ * Provides production-grade persistent storage via etcd and Kubernetes API integration
  */
 @Service
 @RequiredArgsConstructor
@@ -292,7 +292,7 @@ public class KubernetesClusterService {
     
     /**
      * Create a default cluster definition and store it in Kubernetes API
-     * This replaces the old in-memory approach
+     * Provides sensible defaults for new cluster configurations
      */
     public OpenSearchCluster createDefaultClusterDefinition(String clusterName) {
         log.info("Creating default OpenSearchCluster definition: {}", clusterName);

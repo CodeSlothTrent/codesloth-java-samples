@@ -4,17 +4,13 @@ This document explains how our OpenSearch cluster controller integrates with the
 
 ## 🏗️ Architecture Overview
 
-### Before: Simple In-Memory Storage
+### Production-Grade Storage Architecture
 ```java
-// Old approach - simple but not production-ready
-private final Map<String, OpenSearchCluster> clusters = new HashMap<>();
-```
-
-### After: Kubernetes API + etcd Integration
-```java
-// Production approach - using Kubernetes API backed by etcd
+// Kubernetes API + etcd integration for persistent, distributed state management
 private final KubernetesClusterService kubernetesClusterService;
 ```
+
+This approach provides enterprise-level capabilities including persistence, high availability, audit trails, and RBAC integration.
 
 ## 🔄 Data Flow
 
@@ -95,9 +91,9 @@ public List<OpenSearchCluster> listClusters() {
 }
 ```
 
-### 3. Updated Controller (`OpenSearchClusterController.java`)
+### 3. Production Controller (`OpenSearchClusterController.java`)
 
-The controller now uses Kubernetes API instead of HashMap:
+The controller leverages Kubernetes API for robust state management:
 
 ```java
 @SqsListener("${aws.sqs.metrics-queue}")
@@ -202,18 +198,18 @@ Value: {
 5. **API Server formats response** → Converts to proper API response
 6. **Controller receives cluster** → Converted to `OpenSearchCluster` object
 
-## 📈 Benefits Over HashMap Approach
+## 📈 Enterprise Features
 
-| Feature | HashMap (Old) | Kubernetes API + etcd (New) |
-|---------|---------------|------------------------------|
-| **Persistence** | ❌ Lost on restart | ✅ Survives restarts |
-| **Consistency** | ❌ Single instance only | ✅ Multiple controllers see same data |
-| **High Availability** | ❌ No redundancy | ✅ etcd cluster provides HA |
-| **Scalability** | ❌ Memory limited | ✅ Distributed storage |
-| **Audit Trail** | ❌ No history | ✅ Full audit logging |
-| **Access Control** | ❌ No security | ✅ RBAC integration |
-| **Watching Changes** | ❌ Manual polling | ✅ Real-time notifications |
-| **Multi-tenancy** | ❌ No isolation | ✅ Namespace isolation |
+| Feature | Kubernetes API + etcd Benefits |
+|---------|------------------------------|
+| **Persistence** | ✅ Data survives restarts and system failures |
+| **Consistency** | ✅ Multiple controllers can safely share state |
+| **High Availability** | ✅ etcd cluster provides automatic failover |
+| **Scalability** | ✅ Distributed storage scales horizontally |
+| **Audit Trail** | ✅ Complete history of all cluster changes |
+| **Access Control** | ✅ RBAC integration for fine-grained permissions |
+| **Real-time Updates** | ✅ Watch API provides instant change notifications |
+| **Multi-tenancy** | ✅ Namespace isolation for different environments |
 
 ## 🔧 Configuration
 

@@ -197,7 +197,7 @@ public class OpenSearchService {
      * Maps cluster request to OpenSearch instance type.
      */
     private OpenSearchPartitionInstanceType mapInstanceType(ClusterRequest request) {
-        // Simple mapping based on resource requirements
+        // Instance type mapping based on resource requirements and workload characteristics
         if (request.getResources() != null && request.getResources().getMemoryRequest() != null) {
             String memory = request.getResources().getMemoryRequest();
             if (memory.contains("4Gi") || memory.contains("4G")) {

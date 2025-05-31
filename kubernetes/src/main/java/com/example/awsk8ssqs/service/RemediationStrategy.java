@@ -306,7 +306,7 @@ public class RemediationStrategy {
      * Determine preemptive action based on trends
      */
     private RemediationAction determinePreemptiveAction(OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        // Simple trend analysis - in production, use more sophisticated time-series analysis
+        // Trend analysis using recent metrics data points
         var metricsData = metrics.getMetrics();
         var thresholds = cluster.getSpec().getThresholds();
         

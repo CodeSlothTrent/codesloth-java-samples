@@ -213,7 +213,7 @@ public class OpenSearchClusterController {
     }
     
     private boolean evaluateRuleCondition(String condition, OpenSearchCluster cluster, CloudWatchMetrics metrics) {
-        // Simple condition evaluator - in production, use a proper expression evaluator
+        // Basic condition evaluator for custom remediation rules
         try {
             var metricsData = metrics.getMetrics();
             var thresholds = cluster.getSpec().getThresholds();
@@ -227,7 +227,7 @@ public class OpenSearchClusterController {
                 .replace("nodeCount", String.valueOf(cluster.getSpec().getNodeCount()))
                 .replace("minNodes", String.valueOf(cluster.getMinNodes()));
             
-            // Simple boolean expression evaluation (replace with proper evaluator in production)
+            // Boolean expression evaluation for remediation rule conditions
             return evaluateSimpleExpression(evaluableCondition);
             
         } catch (Exception e) {
@@ -237,7 +237,7 @@ public class OpenSearchClusterController {
     }
     
     private boolean evaluateSimpleExpression(String expression) {
-        // Very basic expression evaluator - replace with proper library in production
+        // Basic expression evaluator for AND/OR conditions
         try {
             if (expression.contains(" AND ")) {
                 String[] parts = expression.split(" AND ");

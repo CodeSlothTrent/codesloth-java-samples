@@ -8,7 +8,8 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="workflow-automation" />
-        <module name="codesloth-java-samples" />
+        <module name="myproject" />
+        <module name="aws-kubernetes-sqs-demo" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>

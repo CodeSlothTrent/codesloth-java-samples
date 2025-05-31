@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # LocalStack for AWS services emulation
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: opensearch-sqs-localstack
+    ports:
+      - "4566:4566"  # LocalStack main port
+      - "4510-4559:4510-4559"  # External service ports
+    environment:
+      - SERVICES=sqs,opensearch,s3,iam
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - HOST_TMP_FOLDER=${TMPDIR:-/tmp}/localstack
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack-init:/etc/localstack/init/ready.d"
+    networks:
+      - opensearch-sqs-network
+
+
+
+volumes:
+
+networks:
+  opensearch-sqs-network:
+    driver: bridge 

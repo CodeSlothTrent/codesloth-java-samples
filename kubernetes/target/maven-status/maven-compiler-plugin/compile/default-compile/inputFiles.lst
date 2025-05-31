@@ -1,0 +1,9 @@
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\AwsKubernetesSqsDemoApplication.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\service\ElasticsearchService.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\config\KubernetesConfig.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\model\ClusterRequest.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\service\KubernetesService.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\config\AwsConfig.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\service\ClusterProvisioningService.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\controller\ClusterController.java
+C:\_dev\codesloth-java-samples\kubernetes\src\main\java\com\example\awsk8ssqs\controller\SqsMessageController.java

@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: aws-opensearch-sqs-demo
+  profiles:
+    active: local
+  
+  # Jackson configuration for JSON processing
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+# AWS Configuration
+aws:
+  region: us-east-1
+  localstack:
+    endpoint: http://localhost:4566
+    access-key: test
+    secret-key: test
+  sqs:
+    cluster-requests-queue: cluster-requests
+    cluster-deletion-queue: cluster-deletions
+
+# Spring Cloud AWS SQS Configuration
+spring.cloud.aws:
+  region:
+    static: ${aws.region}
+  credentials:
+    access-key: ${aws.localstack.access-key}
+    secret-key: ${aws.localstack.secret-key}
+  sqs:
+    endpoint: ${aws.localstack.endpoint}
+    region: ${aws.region}
+
+# Logging Configuration
+logging:
+  level:
+    com.example.awsk8ssqs: DEBUG
+    software.amazon.awssdk: INFO
+    io.awspring.cloud.sqs: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management and Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Server Configuration
+server:
+  port: 8080
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  cloud:
+    aws:
+      credentials:
+        # Use IAM roles or environment variables in production
+        access-key: 
+        secret-key: 
+      sqs:
+        endpoint: # Use default AWS SQS endpoints
+
+aws:
+  localstack:
+    endpoint: # Not used in production
+
+logging:
+  level:
+    com.example.awsk8ssqs: INFO
+    root: WARN 

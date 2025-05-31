@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opensearch-sqs-demo
+  labels:
+    name: opensearch-sqs-demo
+    purpose: demo
+    component: aws-opensearch-sqs-integration 

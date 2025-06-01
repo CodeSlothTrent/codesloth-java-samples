@@ -22,8 +22,6 @@ services:
 
 
 
-volumes:
-
 networks:
   opensearch-sqs-network:
     driver: bridge 

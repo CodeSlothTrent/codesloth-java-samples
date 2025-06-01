@@ -1,6 +1,6 @@
 spring:
   application:
-    name: aws-kubernetes-sqs-demo
+    name: aws-opensearch-sqs-demo
   profiles:
     active: local
   
@@ -20,6 +20,7 @@ aws:
   sqs:
     cluster-requests-queue: cluster-requests
     cluster-deletion-queue: cluster-deletions
+    metrics-queue: cluster-metrics
 
 # Spring Cloud AWS SQS Configuration
 spring.cloud.aws:
@@ -32,17 +33,10 @@ spring.cloud.aws:
     endpoint: ${aws.localstack.endpoint}
     region: ${aws.region}
 
-# Kubernetes Configuration
-kubernetes:
-  config:
-    in-cluster: false
-    kubeconfig-path: # Leave empty to use default kubeconfig
-
 # Logging Configuration
 logging:
   level:
     com.example.awsk8ssqs: DEBUG
-    io.kubernetes.client: INFO
     software.amazon.awssdk: INFO
     io.awspring.cloud.sqs: DEBUG
   pattern:
@@ -67,6 +61,15 @@ management:
 server:
   port: 8080
 
+# Kubernetes Configuration
+kubernetes:
+  config:
+    # Set to true when running inside a Kubernetes pod
+    in-cluster: false
+    # Path to kubeconfig file (leave empty to use default ~/.kube/config)
+    kubeconfig-path: 
+  namespace: default
+
 ---
 # Production Profile
 spring:
@@ -89,8 +92,4 @@ aws:
 logging:
   level:
     com.example.awsk8ssqs: INFO
-    root: WARN
-
-kubernetes:
-  config:
-    in-cluster: true # Use in-cluster configuration when deployed to K8s 
+    root: WARN 

@@ -1,5 +1,10 @@
 package com.example.awsk8ssqs.model;
 
+import com.example.awsk8ssqs.model.metadata.ObjectMeta;
+import com.example.awsk8ssqs.model.cluster.ClusterSpec;
+import com.example.awsk8ssqs.model.cluster.ClusterStatus;
+import com.example.awsk8ssqs.model.cluster.ClusterPhase;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -98,25 +103,6 @@ public class OpenSearchCluster {
         private LastAction lastAction;
         private List<ClusterCondition> conditions;
         private LocalDateTime lastUpdated;
-    }
-    
-    public enum ClusterPhase {
-        PENDING("Pending"),
-        CREATING("Creating"),
-        READY("Ready"),
-        SCALING("Scaling"),
-        ERROR("Error"),
-        DELETING("Deleting");
-        
-        private final String value;
-        
-        ClusterPhase(String value) {
-            this.value = value;
-        }
-        
-        public String getValue() {
-            return value;
-        }
     }
     
     @Data

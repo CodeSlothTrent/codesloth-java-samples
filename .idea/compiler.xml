@@ -18,6 +18,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="aws-kubernetes-sqs-demo" options="-parameters" />
       <module name="cursor-automation-api" options="-parameters" />
     </option>
   </component>
